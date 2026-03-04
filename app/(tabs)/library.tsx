@@ -1,10 +1,19 @@
-import { View, Text } from "react-native";
+import { ScrollView, View } from 'react-native';
+import { PrinciplesSection } from '@/components/library/PrinciplesSection';
+import { EnergySystemsSection } from '@/components/library/EnergySystemsSection';
+import { GripsSection } from '@/components/library/GripsSection';
+import { ParametersSection } from '@/components/library/ParametersSection';
+import { CrimpLearningSection } from '@/components/library/CrimpLearningSection';
 
 export default function LibraryScreen() {
   return (
-    <View className="flex-1 items-center justify-center bg-white">
-      <Text className="text-xl font-bold">Library</Text>
-      <Text className="text-gray-500 mt-2">Training guides will appear here</Text>
-    </View>
+    <ScrollView className="flex-1 bg-neutral-900 px-4 pt-4">
+      <PrinciplesSection />
+      <EnergySystemsSection />
+      <GripsSection />
+      <ParametersSection />
+      <CrimpLearningSection />
+      <View className="h-8" />
+    </ScrollView>
   );
 }
