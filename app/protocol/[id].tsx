@@ -55,7 +55,7 @@ export default function ProtocolConfigScreen() {
       </View>
 
       <TouchableOpacity
-        className={`rounded-2xl py-4 items-center mb-8 ${canStart ? 'bg-orange-500' : 'bg-neutral-700'}`}
+        className={`rounded-2xl py-4 items-center mb-8 ${canStart ? 'bg-orange-500' : 'bg-stone-700'}`}
         onPress={handleStart}
         disabled={!canStart}
         activeOpacity={0.8}
