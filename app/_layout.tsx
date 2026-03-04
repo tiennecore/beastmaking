@@ -3,8 +3,9 @@ import { Stack } from "expo-router";
 
 export default function RootLayout() {
   return (
-    <Stack>
+    <Stack screenOptions={{ headerStyle: { backgroundColor: '#171717' }, headerTintColor: '#fff' }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="protocol/[id]" options={{ title: 'Configuration', headerBackTitle: 'Retour' }} />
     </Stack>
   );
 }
