@@ -1,7 +1,9 @@
+import { useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTimerStore } from '@/stores/timer-store';
 import { getGripById } from '@/constants/grips';
+import { saveHistoryEntry } from '@/lib/storage';
 
 function formatDuration(seconds: number): string {
   const min = Math.floor(seconds / 60);
@@ -10,16 +12,38 @@ function formatDuration(seconds: number): string {
   return sec > 0 ? `${min}min ${sec}s` : `${min}min`;
 }
 
+function StatCard({ icon, label, value }: { icon: string; label: string; value: string }) {
+  return (
+    <View className="bg-stone-800 border border-stone-700 rounded-2xl p-3 flex-1">
+      <Text className="text-lg mb-1">{icon}</Text>
+      <Text className="text-stone-50 text-xl font-bold">{value}</Text>
+      <Text className="text-stone-400 text-xs">{label}</Text>
+    </View>
+  );
+}
+
 export default function RecapScreen() {
   const router = useRouter();
-  const result = useTimerStore((s) => s.getResult());
+  const result = useTimerStore((s) => s.lastResult);
+  const savedRef = useRef(false);
+
+  useEffect(() => {
+    if (result && !savedRef.current) {
+      savedRef.current = true;
+      saveHistoryEntry({
+        id: Date.now().toString(),
+        date: new Date().toISOString(),
+        result,
+      });
+    }
+  }, [result]);
 
   if (!result) {
     return (
-      <View className="flex-1 bg-neutral-900 items-center justify-center">
-        <Text className="text-white">Aucune séance à afficher</Text>
+      <View className="flex-1 bg-stone-950 items-center justify-center">
+        <Text className="text-stone-50">Aucune seance a afficher</Text>
         <TouchableOpacity className="mt-4" onPress={() => router.replace('/')}>
-          <Text className="text-red-400">Retour</Text>
+          <Text className="text-orange-400">Retour</Text>
         </TouchableOpacity>
       </View>
     );
@@ -28,48 +52,74 @@ export default function RecapScreen() {
   const { protocol, grips, completedSets, completedRounds, totalDuration, completed } = result;
 
   return (
-    <ScrollView className="flex-1 bg-neutral-900 px-4 pt-8">
-      <Text className="text-white text-3xl font-bold text-center mb-2">
-        {completed ? '🎉 Séance terminée !' : '⏹ Séance interrompue'}
+    <ScrollView className="flex-1 bg-stone-950 px-4 pt-8">
+      {/* Header */}
+      <Text
+        className={`text-3xl font-bold tracking-tight text-center mb-2 ${
+          completed ? 'text-lime-400' : 'text-amber-400'
+        }`}
+      >
+        {completed ? 'Seance terminee !' : 'Seance interrompue'}
+      </Text>
+      <Text className="text-stone-400 text-center mb-6">
+        {protocol.icon} {protocol.name}
       </Text>
 
-      <View className="bg-neutral-800 rounded-xl p-4 mt-6 mb-4">
-        <Text className="text-white text-lg font-bold mb-3">Résumé</Text>
-        <View className="gap-2">
-          <Text className="text-neutral-300">
-            📋 {protocol.icon} {protocol.name}
-          </Text>
-          {grips.length > 0 && (
-            <Text className="text-neutral-300">
-              ✋ {grips.map((g) => getGripById(g)?.name).join(', ')}
-            </Text>
-          )}
-          <Text className="text-neutral-300">
-            📊 {completedSets} série{completedSets > 1 ? 's' : ''}
-            {completedRounds > 1 ? ` · ${completedRounds} tour${completedRounds > 1 ? 's' : ''}` : ''}
-          </Text>
-          <Text className="text-neutral-300">
-            ⏱ {formatDuration(totalDuration)}
-          </Text>
-        </View>
+      {/* Stats grid */}
+      <View className="flex-row gap-3 mb-4">
+        <StatCard
+          icon="⏱"
+          label="Duree"
+          value={formatDuration(totalDuration)}
+        />
+        <StatCard
+          icon="🔁"
+          label={completedSets > 1 ? 'Series' : 'Serie'}
+          value={String(completedSets)}
+        />
+      </View>
+      <View className="flex-row gap-3 mb-6">
+        {completedRounds > 1 && (
+          <StatCard
+            icon="🔄"
+            label="Tours"
+            value={String(completedRounds)}
+          />
+        )}
+        {grips.length > 0 && (
+          <StatCard
+            icon="✋"
+            label="Prehensions"
+            value={grips.map((g) => getGripById(g)?.name).join(', ')}
+          />
+        )}
       </View>
 
-      <View className="bg-green-900/30 border border-green-700 rounded-xl p-4 mb-4">
-        <Text className="text-green-400 font-bold mb-1">🩺 Récupération</Text>
-        <Text className="text-neutral-300">{protocol.recoveryAdvice}</Text>
+      {/* Recovery advice */}
+      <View
+        className="bg-stone-800 rounded-2xl p-4 mb-4 border border-stone-700"
+        style={{ borderLeftWidth: 3, borderLeftColor: '#A3E635' }}
+      >
+        <Text className="text-lime-400 font-bold mb-1">Recuperation</Text>
+        <Text className="text-stone-300">{protocol.recoveryAdvice}</Text>
       </View>
 
-      <View className="bg-blue-900/30 border border-blue-700 rounded-xl p-4 mb-6">
-        <Text className="text-blue-400 font-bold mb-1">📅 Fréquence recommandée</Text>
-        <Text className="text-neutral-300">{protocol.frequencyAdvice}</Text>
+      {/* Frequency advice */}
+      <View
+        className="bg-stone-800 rounded-2xl p-4 mb-6 border border-stone-700"
+        style={{ borderLeftWidth: 3, borderLeftColor: '#22D3EE' }}
+      >
+        <Text className="text-cyan-400 font-bold mb-1">Frequence recommandee</Text>
+        <Text className="text-stone-300">{protocol.frequencyAdvice}</Text>
       </View>
 
+      {/* Return button */}
       <TouchableOpacity
-        className="bg-red-600 rounded-xl py-4 items-center mb-8"
+        className="bg-orange-500 rounded-2xl py-4 items-center mb-8"
         onPress={() => router.replace('/')}
         activeOpacity={0.8}
       >
-        <Text className="text-white text-lg font-bold">Retour aux protocoles</Text>
+        <Text className="text-white text-lg font-bold">Retour au menu</Text>
       </TouchableOpacity>
 
       <View className="h-8" />
