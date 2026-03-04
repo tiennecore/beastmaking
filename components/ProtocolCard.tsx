@@ -15,7 +15,7 @@ const FAMILY_LABELS = {
 export function ProtocolCard({ protocol, onPress }: Props) {
   return (
     <TouchableOpacity
-      className="bg-neutral-800 rounded-xl p-4 mb-3"
+      className="bg-stone-800 border border-stone-700 rounded-2xl p-4 mb-3"
       onPress={onPress}
       activeOpacity={0.7}
     >
@@ -24,10 +24,10 @@ export function ProtocolCard({ protocol, onPress }: Props) {
           {protocol.icon} {protocol.name}
         </Text>
       </View>
-      <Text className="text-neutral-400 text-sm mb-2">
+      <Text className="text-stone-400 text-sm mb-2">
         {FAMILY_LABELS[protocol.family]} · {protocol.energySystem}
       </Text>
-      <Text className="text-neutral-300 text-sm">{protocol.summary}</Text>
+      <Text className="text-stone-300 text-sm">{protocol.summary}</Text>
     </TouchableOpacity>
   );
 }
