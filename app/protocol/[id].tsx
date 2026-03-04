@@ -18,14 +18,13 @@ export default function ProtocolConfigScreen() {
 
   if (!protocol) {
     return (
-      <View className="flex-1 bg-neutral-900 items-center justify-center">
+      <View className="flex-1 bg-stone-950 items-center justify-center">
         <Text className="text-white">Protocole introuvable</Text>
       </View>
     );
   }
 
-  const isPullups = protocol.family === 'pullups';
-  const canStart = isPullups || selectedGrips.length > 0;
+  const canStart = true;
 
   const handleToggleGrip = (grip: GripType) => {
     setSelectedGrips((prev) =>
@@ -39,32 +38,29 @@ export default function ProtocolConfigScreen() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-neutral-900 px-4 pt-4">
+    <ScrollView className="flex-1 bg-stone-950 px-4 pt-4">
       <Text className="text-white text-2xl font-bold mb-1">{protocol.icon} {protocol.name}</Text>
-      <Text className="text-neutral-400 mb-6">{protocol.summary}</Text>
+      <Text className="text-stone-400 mb-6">{protocol.summary}</Text>
 
       <GripSelector
         selected={selectedGrips}
         onToggle={handleToggleGrip}
-        showForPullups={isPullups}
       />
 
       <TimerConfigForm config={config} onChange={setConfig} />
 
-      <View className="bg-neutral-800 rounded-xl p-4 mb-6">
+      <View className="bg-amber-950/40 rounded-2xl p-4 border border-amber-800/50 mb-6">
         <Text className="text-amber-400 font-bold mb-1">Conseil de charge</Text>
-        <Text className="text-neutral-300">{protocol.loadAdvice}</Text>
+        <Text className="text-stone-300">{protocol.loadAdvice}</Text>
       </View>
 
       <TouchableOpacity
-        className={`rounded-xl py-4 items-center mb-8 ${canStart ? 'bg-red-600' : 'bg-neutral-700'}`}
+        className={`rounded-2xl py-4 items-center mb-8 ${canStart ? 'bg-orange-500' : 'bg-neutral-700'}`}
         onPress={handleStart}
         disabled={!canStart}
         activeOpacity={0.8}
       >
-        <Text className="text-white text-xl font-bold">
-          {canStart ? 'Lancer la seance' : 'Selectionnez une prehension'}
-        </Text>
+        <Text className="text-white text-xl font-bold">Lancer la séance</Text>
       </TouchableOpacity>
 
       <View className="h-8" />
