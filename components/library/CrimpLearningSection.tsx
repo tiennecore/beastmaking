@@ -20,9 +20,9 @@ export function CrimpLearningSection() {
     <View className="mb-6">
       <Text className="text-white text-xl font-bold mb-3">Apprendre l'arqué</Text>
       {STEPS.map((step, i) => (
-        <View key={i} className="bg-neutral-800 rounded-lg p-3 mb-2">
+        <View key={i} className="bg-stone-800 rounded-xl p-3 mb-2">
           <Text className="text-white font-bold">{step.title}</Text>
-          <Text className="text-neutral-400 text-sm">{step.desc}</Text>
+          <Text className="text-stone-400 text-sm">{step.desc}</Text>
         </View>
       ))}
     </View>

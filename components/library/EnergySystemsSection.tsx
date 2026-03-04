@@ -11,9 +11,9 @@ export function EnergySystemsSection() {
     <View className="mb-6">
       <Text className="text-white text-xl font-bold mb-3">Les 3 filières énergétiques</Text>
       {SYSTEMS.map((s) => (
-        <View key={s.name} className={`${s.color} rounded-lg p-3 mb-2`}>
+        <View key={s.name} className={`${s.color} rounded-xl p-3 mb-2`}>
           <Text className="text-white font-bold">{s.name}</Text>
-          <Text className="text-neutral-300 text-sm">
+          <Text className="text-stone-300 text-sm">
             {s.speed} · {s.duration} · {s.use}
           </Text>
         </View>
