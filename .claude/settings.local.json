@@ -7,7 +7,26 @@
       "Bash(npx:*)",
       "Bash(node:*)",
       "Bash(npm install:*)",
-      "Bash(npx tsc:*)"
-    ]
+      "Bash(npx tsc:*)",
+      "Bash(ls:*)",
+      "Bash(python3:*)",
+      "WebSearch",
+      "WebFetch(domain:docs.expo.dev)",
+      "Bash(npm uninstall:*)",
+      "mcp__claude_ai_Figma__whoami",
+      "WebFetch(domain:play.google.com)",
+      "WebFetch(domain:climbing-tracker.soft112.com)",
+      "WebFetch(domain:www.crimpd.com)",
+      "mcp__claude_ai_Notion__notion-search",
+      "mcp__claude_ai_Notion__notion-fetch",
+      "mcp__claude_ai_Notion__notion-get-teams",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:notifee.app)",
+      "WebFetch(domain:dev.to)",
+      "Bash(ffmpeg:*)",
+      "mcp__claude_ai_Notion__notion-create-pages",
+      "Bash(cat:*)"
+    ],
+    "defaultMode": "bypassPermissions"
   }
 }

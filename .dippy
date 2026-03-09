@@ -1,0 +1,7 @@
+# Dippy rules — beastmaking (React Native + Expo)
+
+# Protect native configs
+deny-redirect **/app.json "Review Expo config changes manually"
+deny-redirect **/eas.json "Review EAS build config manually"
+deny-redirect **/android/app/build.gradle "Review Android build config manually"
+deny-redirect **/ios/Podfile "Review iOS Podfile changes manually"
