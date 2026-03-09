@@ -1,46 +1,40 @@
-import { Audio } from 'expo-av';
+import { createAudioPlayer, AudioPlayer } from 'expo-audio';
 
-let shortBeep: Audio.Sound | null = null;
-let longBeep: Audio.Sound | null = null;
+let shortBeep: AudioPlayer | null = null;
+let longBeep: AudioPlayer | null = null;
 
-export async function loadSounds() {
-  const { sound: short } = await Audio.Sound.createAsync(
-    require('@/assets/sounds/beep-short.mp3')
-  );
-  const { sound: long } = await Audio.Sound.createAsync(
-    require('@/assets/sounds/beep-long.mp3')
-  );
-  shortBeep = short;
-  longBeep = long;
+export function loadSounds() {
+  shortBeep = createAudioPlayer(require('@/assets/sounds/beep-short.mp3'));
+  longBeep = createAudioPlayer(require('@/assets/sounds/beep-long.mp3'));
 }
 
-export async function playCountdown() {
+export function playCountdown() {
   if (!shortBeep) return;
-  await shortBeep.replayAsync();
+  shortBeep.seekTo(0);
+  shortBeep.play();
 }
 
-export async function playStart() {
-  if (!shortBeep) return;
-  for (let i = 0; i < 3; i++) {
-    await shortBeep.replayAsync();
-    await new Promise((r) => setTimeout(r, 200));
-  }
+export function playStart() {
+  playCountdown();
+  setTimeout(() => playCountdown(), 200);
+  setTimeout(() => playCountdown(), 400);
 }
 
-export async function playEnd() {
+export function playEnd() {
   if (!longBeep) return;
-  await longBeep.replayAsync();
+  longBeep.seekTo(0);
+  longBeep.play();
 }
 
-export async function playSessionEnd() {
-  if (!longBeep) return;
-  for (let i = 0; i < 3; i++) {
-    await longBeep.replayAsync();
-    await new Promise((r) => setTimeout(r, 400));
-  }
+export function playSessionEnd() {
+  playEnd();
+  setTimeout(() => playEnd(), 400);
+  setTimeout(() => playEnd(), 800);
 }
 
-export async function unloadSounds() {
-  await shortBeep?.unloadAsync();
-  await longBeep?.unloadAsync();
+export function unloadSounds() {
+  shortBeep?.remove();
+  longBeep?.remove();
+  shortBeep = null;
+  longBeep = null;
 }

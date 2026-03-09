@@ -7,7 +7,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useFocusEffect } from 'expo-router';
+import { useThemeColors } from '@/lib/theme';
 import {
   ClimbingSession,
   ClimbingType,
@@ -88,13 +91,17 @@ function ToggleButton<T extends string>({
       className={`px-3 py-2 rounded-lg border ${
         selected
           ? 'bg-orange-500 border-orange-500'
-          : 'bg-stone-800 border-stone-700'
+          : 'bg-stone-100 dark:bg-stone-800 border-stone-300 dark:border-stone-700/50'
       }`}
       onPress={() => onPress(value)}
+      style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}
+      accessibilityRole="tab"
+      accessibilityState={{ selected }}
+      accessibilityLabel={label}
     >
       <Text
         className={`text-sm font-medium text-center ${
-          selected ? 'text-white' : 'text-stone-300'
+          selected ? 'text-white' : 'text-stone-600 dark:text-stone-300'
         }`}
       >
         {label}
@@ -109,11 +116,14 @@ function DifficultyBadge({ level }: { level: DifficultyLevel }) {
   return (
     <View className="flex-row items-center gap-0.5">
       {[1, 2, 3, 4].map((i) => (
-        <Text key={i} className={i <= filled ? 'text-red-500' : 'text-stone-600'}>
-          ★
-        </Text>
+        <Ionicons
+          key={i}
+          name="star"
+          size={14}
+          color={i <= filled ? '#EF4444' : '#78716C'}
+        />
       ))}
-      <Text className="text-stone-400 text-xs ml-1">
+      <Text className="text-stone-500 dark:text-stone-400 text-xs ml-1">
         {DIFFICULTY_LABELS[level]}
       </Text>
     </View>
@@ -134,7 +144,11 @@ function SessionCard({
 
   return (
     <Pressable
-      className="bg-stone-800 rounded-2xl p-4 mb-3"
+      className="bg-stone-100 dark:bg-stone-800 rounded-3xl p-4 mb-3"
+      style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}
+      accessibilityRole="button"
+      accessibilityLabel={`Séance ${typeLabel} du ${formatDate(session.date)}`}
+      accessibilityHint="Maintenir pour supprimer"
       onLongPress={() => {
         Alert.alert(
           'Supprimer la séance',
@@ -151,7 +165,7 @@ function SessionCard({
       }}
     >
       <View className="flex-row items-center justify-between mb-2">
-        <Text className="text-stone-400 text-sm">
+        <Text className="text-stone-500 dark:text-stone-400 text-sm">
           {formatDate(session.date)}
         </Text>
         <View
@@ -163,31 +177,31 @@ function SessionCard({
       </View>
 
       <View className="flex-row items-center justify-between">
-        <Text className="text-white text-sm">
+        <Text className="text-stone-700 dark:text-stone-300 text-sm">
           {EFFORT_LABELS[session.effortType]}
         </Text>
         <DifficultyBadge level={session.difficulty} />
       </View>
 
       {hasDetails && (
-        <View className="mt-3 pt-3 border-t border-stone-700">
+        <View className="mt-3 pt-3 border-t border-stone-300 dark:border-stone-700/50">
           {session.routeCount != null && (
-            <Text className="text-stone-400 text-sm">
+            <Text className="text-stone-500 dark:text-stone-400 text-sm">
               {session.type === 'voie' ? 'Voies' : 'Blocs'} : {session.routeCount}
             </Text>
           )}
           {session.grades != null && (
-            <Text className="text-stone-400 text-sm">
+            <Text className="text-stone-500 dark:text-stone-400 text-sm">
               Cotations : {session.grades}
             </Text>
           )}
           {session.duration != null && (
-            <Text className="text-stone-400 text-sm">
+            <Text className="text-stone-500 dark:text-stone-400 text-sm">
               Durée : {session.duration} min
             </Text>
           )}
           {session.notes != null && (
-            <Text className="text-stone-300 text-sm mt-1 italic">
+            <Text className="text-stone-600 dark:text-stone-300 text-sm mt-1 italic">
               {session.notes}
             </Text>
           )}
@@ -198,6 +212,7 @@ function SessionCard({
 }
 
 export default function ClimbingScreen() {
+  const colors = useThemeColors();
   const [sessions, setSessions] = useState<ClimbingSession[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
@@ -260,31 +275,35 @@ export default function ClimbingScreen() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-stone-950 px-4 pt-4">
+    <ScrollView className="flex-1 bg-white dark:bg-stone-950 px-5 pt-4">
       {/* Add session button / form */}
       {!showForm ? (
         <Pressable
-          className="bg-orange-500 rounded-2xl p-4 mb-6 active:opacity-80"
-          onPress={() => setShowForm(true)}
+          className="bg-orange-500 rounded-3xl p-4 mb-6"
+          onPress={() => {
+            setShowForm(true);
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          }}
+          style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}
         >
           <Text className="text-white text-center font-bold text-lg">
             + Ajouter une séance
           </Text>
         </Pressable>
       ) : (
-        <View className="bg-stone-800 rounded-2xl p-4 mb-6">
-          <Text className="text-white text-lg font-bold mb-4">
+        <View className="bg-stone-100 dark:bg-stone-800 rounded-3xl p-4 mb-6">
+          <Text className="text-stone-900 dark:text-stone-50 text-lg font-bold mb-4">
             Nouvelle séance
           </Text>
 
           {/* Date */}
-          <Text className="text-stone-400 text-sm mb-1">Date</Text>
-          <View className="bg-stone-700 rounded-lg px-3 py-2 mb-4">
-            <Text className="text-white">{formatDate(today)}</Text>
+          <Text className="text-stone-500 dark:text-stone-400 text-sm mb-1">Date</Text>
+          <View className="bg-stone-200 dark:bg-stone-700 rounded-lg px-3 py-2 mb-4">
+            <Text className="text-stone-700 dark:text-stone-300">{formatDate(today)}</Text>
           </View>
 
           {/* Type */}
-          <Text className="text-stone-400 text-sm mb-2">Type</Text>
+          <Text className="text-stone-500 dark:text-stone-400 text-sm mb-2">Type</Text>
           <View className="flex-row gap-2 mb-4">
             {CLIMBING_TYPES.map((t) => (
               <ToggleButton
@@ -298,7 +317,7 @@ export default function ClimbingScreen() {
           </View>
 
           {/* Effort type */}
-          <Text className="text-stone-400 text-sm mb-2">Type d'effort</Text>
+          <Text className="text-stone-500 dark:text-stone-400 text-sm mb-2">Type d'effort</Text>
           <View className="flex-row flex-wrap gap-2 mb-4">
             {EFFORT_TYPES.map((e) => (
               <ToggleButton
@@ -312,7 +331,7 @@ export default function ClimbingScreen() {
           </View>
 
           {/* Difficulty */}
-          <Text className="text-stone-400 text-sm mb-2">Difficulté</Text>
+          <Text className="text-stone-500 dark:text-stone-400 text-sm mb-2">Difficulté</Text>
           <View className="flex-row gap-2 mb-4">
             {DIFFICULTY_LEVELS.map((d) => (
               <ToggleButton
@@ -329,8 +348,12 @@ export default function ClimbingScreen() {
           <Pressable
             className="mb-4"
             onPress={() => setShowDetails(!showDetails)}
+            style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: showDetails }}
+            accessibilityLabel={showDetails ? 'Moins de détails' : 'Plus de détails'}
           >
-            <Text className="text-red-400 text-sm font-medium">
+            <Text className="text-orange-400 text-sm font-medium">
               {showDetails ? '▾ Moins de détails' : '▸ Plus de détails'}
             </Text>
           </Pressable>
@@ -338,55 +361,59 @@ export default function ClimbingScreen() {
           {showDetails && (
             <View className="gap-3 mb-4">
               <View>
-                <Text className="text-stone-400 text-sm mb-1">
+                <Text className="text-stone-500 dark:text-stone-400 text-sm mb-1">
                   Nombre de {type === 'voie' ? 'voies' : 'blocs'}
                 </Text>
                 <TextInput
-                  className="bg-stone-700 text-white rounded-lg px-3 py-2"
+                  className="bg-stone-200 dark:bg-stone-700 text-stone-900 dark:text-stone-50 rounded-lg px-3 py-2"
                   placeholder="Ex: 15"
-                  placeholderTextColor="#737373"
+                  placeholderTextColor={colors.textMuted}
                   keyboardType="numeric"
                   value={routeCount}
                   onChangeText={setRouteCount}
+                  accessibilityLabel={`Nombre de ${type === 'voie' ? 'voies' : 'blocs'}`}
                 />
               </View>
 
               <View>
-                <Text className="text-stone-400 text-sm mb-1">Cotations</Text>
+                <Text className="text-stone-500 dark:text-stone-400 text-sm mb-1">Cotations</Text>
                 <TextInput
-                  className="bg-stone-700 text-white rounded-lg px-3 py-2"
+                  className="bg-stone-200 dark:bg-stone-700 text-stone-900 dark:text-stone-50 rounded-lg px-3 py-2"
                   placeholder="Ex: 6a, 6b+, 7a"
-                  placeholderTextColor="#737373"
+                  placeholderTextColor={colors.textMuted}
                   value={grades}
                   onChangeText={setGrades}
+                  accessibilityLabel="Cotation max"
                 />
               </View>
 
               <View>
-                <Text className="text-stone-400 text-sm mb-1">
+                <Text className="text-stone-500 dark:text-stone-400 text-sm mb-1">
                   Durée (minutes)
                 </Text>
                 <TextInput
-                  className="bg-stone-700 text-white rounded-lg px-3 py-2"
+                  className="bg-stone-200 dark:bg-stone-700 text-stone-900 dark:text-stone-50 rounded-lg px-3 py-2"
                   placeholder="Ex: 90"
-                  placeholderTextColor="#737373"
+                  placeholderTextColor={colors.textMuted}
                   keyboardType="numeric"
                   value={duration}
                   onChangeText={setDuration}
+                  accessibilityLabel="Durée en minutes"
                 />
               </View>
 
               <View>
-                <Text className="text-stone-400 text-sm mb-1">Notes</Text>
+                <Text className="text-stone-500 dark:text-stone-400 text-sm mb-1">Notes</Text>
                 <TextInput
-                  className="bg-stone-700 text-white rounded-lg px-3 py-2"
+                  className="bg-stone-200 dark:bg-stone-700 text-stone-900 dark:text-stone-50 rounded-lg px-3 py-2"
                   placeholder="Ressenti, conditions..."
-                  placeholderTextColor="#737373"
+                  placeholderTextColor={colors.textMuted}
                   multiline
                   numberOfLines={3}
                   textAlignVertical="top"
                   value={notes}
                   onChangeText={setNotes}
+                  accessibilityLabel="Notes"
                 />
               </View>
             </View>
@@ -395,19 +422,26 @@ export default function ClimbingScreen() {
           {/* Actions */}
           <View className="flex-row gap-3">
             <Pressable
-              className="flex-1 bg-stone-700 rounded-lg py-3 active:opacity-80"
+              className="flex-1 bg-stone-200 dark:bg-stone-700 rounded-lg py-3"
               onPress={() => {
                 resetForm();
                 setShowForm(false);
               }}
+              style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}
             >
-              <Text className="text-stone-300 text-center font-medium">
+              <Text className="text-stone-600 dark:text-stone-300 text-center font-medium">
                 Annuler
               </Text>
             </Pressable>
             <Pressable
-              className="flex-1 bg-orange-500 rounded-lg py-3 active:opacity-80"
-              onPress={handleSave}
+              className="flex-1 bg-orange-500 rounded-lg py-3"
+              onPress={() => {
+                handleSave();
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }}
+              style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}
+              accessibilityRole="button"
+              accessibilityLabel="Ajouter une séance d'escalade"
             >
               <Text className="text-white text-center font-bold">
                 Enregistrer
@@ -421,13 +455,13 @@ export default function ClimbingScreen() {
       {sessions.length === 0 ? (
         <View className="items-center py-12">
           <Text className="text-4xl mb-3">🧗</Text>
-          <Text className="text-stone-400 text-center">
+          <Text className="text-stone-500 dark:text-stone-400 text-center">
             Aucune séance enregistrée.{'\n'}Ajoute ta première séance de grimpe !
           </Text>
         </View>
       ) : (
         <View>
-          <Text className="text-stone-400 text-sm mb-3">
+          <Text className="text-stone-500 dark:text-stone-400 text-sm mb-3">
             {sessions.length} séance{sessions.length > 1 ? 's' : ''}
           </Text>
           {sessions.map((session) => (
@@ -437,6 +471,9 @@ export default function ClimbingScreen() {
               onDelete={handleDelete}
             />
           ))}
+          <Text className="text-stone-400 dark:text-stone-500 text-xs text-center mt-4">
+            Maintenir pour supprimer une entrée
+          </Text>
         </View>
       )}
 

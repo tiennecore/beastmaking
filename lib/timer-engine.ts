@@ -8,13 +8,11 @@ export type Phase = {
   round?: number;
 };
 
-const PREP_DURATION = 5;
-
 export function computePhaseSequence(config: TimerConfig): Phase[] {
   const phases: Phase[] = [];
   const totalRounds = config.rounds ?? 1;
 
-  phases.push({ type: 'prep', duration: PREP_DURATION, rep: 1, set: 1, round: 1 });
+  phases.push({ type: 'prep', duration: config.prepDuration, rep: 1, set: 1, round: 1 });
 
   for (let round = 1; round <= totalRounds; round++) {
     for (let set = 1; set <= config.sets; set++) {

@@ -4,6 +4,7 @@ import { TimerConfig } from '@/types';
 describe('computePhaseSequence', () => {
   it('generates correct sequence for simple protocol (2 reps x 2 sets, no rounds)', () => {
     const config: TimerConfig = {
+      prepDuration: 5,
       hangDuration: 7,
       restBetweenReps: 3,
       reps: 2,
@@ -35,6 +36,7 @@ describe('computePhaseSequence', () => {
 
   it('generates correct sequence with rounds (2 reps x 2 sets x 2 rounds)', () => {
     const config: TimerConfig = {
+      prepDuration: 5,
       hangDuration: 7,
       restBetweenReps: 3,
       reps: 2,
@@ -77,6 +79,7 @@ describe('computePhaseSequence', () => {
 
   it('skips REST_REP when restBetweenReps is 0', () => {
     const config: TimerConfig = {
+      prepDuration: 5,
       hangDuration: 10,
       restBetweenReps: 0,
       reps: 1,
@@ -105,6 +108,7 @@ describe('computePhaseSequence', () => {
 
   it('generates minimal sequence for single rep, single set', () => {
     const config: TimerConfig = {
+      prepDuration: 5,
       hangDuration: 7,
       restBetweenReps: 3,
       reps: 1,
@@ -124,6 +128,7 @@ describe('computePhaseSequence', () => {
 
   it('treats undefined rounds as 1 round (no REST_ROUND)', () => {
     const config: TimerConfig = {
+      prepDuration: 5,
       hangDuration: 7,
       restBetweenReps: 3,
       reps: 1,

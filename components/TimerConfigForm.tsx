@@ -1,8 +1,11 @@
 import { Text, View, Pressable } from 'react-native';
 import { useRef, useCallback, useState } from 'react';
+import * as Haptics from 'expo-haptics';
+import { Ionicons } from '@expo/vector-icons';
 import { TimerConfig, TimerPhase } from '@/types';
 import { PHASE_COLORS } from '@/constants/colors';
 import { COLOR_PALETTE } from '@/constants/colors';
+import { useThemeColors } from '@/lib/theme';
 
 type Props = {
   config: TimerConfig;
@@ -21,6 +24,7 @@ function RepeatButton({
   const speedRef = useRef(300);
 
   const startRepeat = useCallback(() => {
+    Haptics.selectionAsync();
     onStep();
     speedRef.current = 300;
 
@@ -42,11 +46,13 @@ function RepeatButton({
 
   return (
     <Pressable
-      className="bg-stone-700 rounded-lg w-10 h-10 items-center justify-center active:bg-stone-600"
+      className="bg-stone-200 dark:bg-stone-700 rounded-lg w-12 h-12 items-center justify-center active:bg-stone-300 dark:active:bg-stone-600"
       onPressIn={startRepeat}
       onPressOut={stopRepeat}
+      accessibilityRole="button"
+      accessibilityLabel={label === '−' ? 'Réduire la durée' : 'Augmenter la durée'}
     >
-      <Text className="text-stone-50 font-bold text-lg">{label}</Text>
+      <Text className="text-stone-900 dark:text-stone-50 font-bold text-lg">{label}</Text>
     </Pressable>
   );
 }
@@ -54,10 +60,12 @@ function RepeatButton({
 function StepButton({ label, onPress }: { label: string; onPress: () => void }) {
   return (
     <Pressable
-      className="bg-stone-700 rounded-lg w-9 h-9 items-center justify-center active:bg-stone-600"
+      className="bg-stone-200 dark:bg-stone-700 rounded-lg w-11 h-11 items-center justify-center active:bg-stone-300 dark:active:bg-stone-600"
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label.startsWith('-') ? `Réduire de ${label.slice(1)}` : `Augmenter de ${label.slice(1)}`}
     >
-      <Text className="text-stone-50 font-bold text-sm">{label}</Text>
+      <Text className="text-stone-900 dark:text-stone-50 font-bold text-sm">{label}</Text>
     </Pressable>
   );
 }
@@ -69,20 +77,24 @@ function ColorPicker({
   current: string;
   onSelect: (color: string) => void;
 }) {
+  const colors = useThemeColors();
   return (
     <View className="flex-row flex-wrap gap-2 mt-2">
       {COLOR_PALETTE.map((color) => (
         <Pressable
           key={color}
           onPress={() => onSelect(color)}
-          className="w-8 h-8 rounded-full items-center justify-center"
+          className="w-10 h-10 rounded-full items-center justify-center"
           style={[
             { backgroundColor: color },
             current === color && {
               borderWidth: 2,
-              borderColor: '#F5F5F4',
+              borderColor: colors.text,
             },
           ]}
+          accessibilityRole="button"
+          accessibilityLabel={`Couleur ${color}`}
+          accessibilityState={{ selected: current === color }}
         >
           {current === color && (
             <Text className="text-white text-xs font-bold">✓</Text>
@@ -104,15 +116,15 @@ type DurationField = {
   key: keyof TimerConfig;
   phase: TimerPhase;
   label: string;
-  emoji: string;
+  icon: keyof typeof Ionicons.glyphMap;
 };
 
 const DURATION_CARDS: DurationField[] = [
-  { key: 'prepDuration', phase: 'prep', label: 'Preparation', emoji: '⏳' },
-  { key: 'hangDuration', phase: 'hang', label: 'Suspension', emoji: '🤚' },
-  { key: 'restBetweenReps', phase: 'restRep', label: 'Repos repetition', emoji: '💨' },
-  { key: 'restBetweenSets', phase: 'restSet', label: 'Repos serie', emoji: '😮‍💨' },
-  { key: 'restBetweenRounds', phase: 'restRound', label: 'Repos tour', emoji: '🧘' },
+  { key: 'prepDuration', phase: 'prep', label: 'Preparation', icon: 'hourglass-outline' },
+  { key: 'hangDuration', phase: 'hang', label: 'Suspension', icon: 'hand-left-outline' },
+  { key: 'restBetweenReps', phase: 'restRep', label: 'Repos repetition', icon: 'flash-outline' },
+  { key: 'restBetweenSets', phase: 'restSet', label: 'Repos serie', icon: 'pause-outline' },
+  { key: 'restBetweenRounds', phase: 'restRound', label: 'Repos tour', icon: 'bed-outline' },
 ];
 
 const VOLUME_FIELDS = [
@@ -123,6 +135,7 @@ const VOLUME_FIELDS = [
 
 export function TimerConfigForm({ config, onChange }: Props) {
   const [expandedColor, setExpandedColor] = useState<string | null>(null);
+  const colors = useThemeColors();
 
   const adjust = (key: keyof TimerConfig, delta: number, min = 0) => {
     const current = (config[key] ?? 0) as number;
@@ -146,26 +159,26 @@ export function TimerConfigForm({ config, onChange }: Props) {
 
   return (
     <View className="mb-6">
-      <Text className="text-stone-50 text-lg font-bold mb-3">Parametres</Text>
+      <Text className="text-stone-900 dark:text-stone-50 text-lg font-bold mb-3">Parametres</Text>
 
       {volumeVisible.length > 0 && (
         <View className="mb-4">
-          <Text className="text-stone-500 text-xs font-semibold uppercase tracking-wide mb-2">
+          <Text className="text-stone-400 dark:text-stone-500 text-xs font-semibold uppercase tracking-wide mb-2">
             Volume
           </Text>
-          <View className="bg-stone-800 rounded-2xl overflow-hidden border border-stone-700">
+          <View className="bg-stone-100 dark:bg-stone-800 rounded-3xl overflow-hidden border border-stone-300 dark:border-stone-700/50">
             {volumeVisible.map((field, i) => (
               <View
                 key={field.key}
                 className={`px-4 py-3 ${
-                  i < volumeVisible.length - 1 ? 'border-b border-stone-700' : ''
+                  i < volumeVisible.length - 1 ? 'border-b border-stone-300 dark:border-stone-700/50' : ''
                 }`}
               >
-                <Text className="text-stone-300 mb-2">{field.label}</Text>
+                <Text className="text-stone-600 dark:text-stone-300 mb-2">{field.label}</Text>
                 <View className="flex-row items-center justify-center gap-2">
                   <StepButton label="-2" onPress={() => adjust(field.key, -2, 1)} />
                   <StepButton label="-1" onPress={() => adjust(field.key, -1, 1)} />
-                  <Text className="text-stone-50 text-xl font-bold w-12 text-center">
+                  <Text className="text-stone-900 dark:text-stone-50 text-xl font-bold w-12 text-center">
                     {config[field.key] as number}
                   </Text>
                   <StepButton label="+1" onPress={() => adjust(field.key, 1, 1)} />
@@ -179,7 +192,7 @@ export function TimerConfigForm({ config, onChange }: Props) {
 
       {durationVisible.length > 0 && (
         <View className="mb-4">
-          <Text className="text-stone-500 text-xs font-semibold uppercase tracking-wide mb-2">
+          <Text className="text-stone-400 dark:text-stone-500 text-xs font-semibold uppercase tracking-wide mb-2">
             Durees
           </Text>
           <View className="flex-row flex-wrap gap-3">
@@ -191,7 +204,7 @@ export function TimerConfigForm({ config, onChange }: Props) {
               return (
                 <View
                   key={field.key}
-                  className="bg-stone-800 rounded-2xl p-3 flex-1 border border-stone-700"
+                  className="bg-stone-100 dark:bg-stone-800 rounded-3xl p-3 flex-1 border border-stone-300 dark:border-stone-700/50"
                   style={{
                     borderLeftWidth: 3,
                     borderLeftColor: color,
@@ -199,19 +212,25 @@ export function TimerConfigForm({ config, onChange }: Props) {
                   }}
                 >
                   <View className="flex-row items-center justify-between mb-2">
-                    <Text className="text-stone-400 text-xs font-semibold">
-                      {field.emoji} {field.label}
-                    </Text>
+                    <View className="flex-row items-center gap-1">
+                      <Ionicons name={field.icon} size={14} color={colors.textSecondary} />
+                      <Text className="text-stone-500 dark:text-stone-400 text-xs font-semibold">
+                        {field.label}
+                      </Text>
+                    </View>
                     <Pressable
                       onPress={() =>
                         setExpandedColor(isColorOpen ? null : field.key)
                       }
-                      className="w-5 h-5 rounded-full"
+                      className="w-10 h-10 rounded-full"
                       style={{ backgroundColor: color }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Choisir la couleur de ${field.label}`}
+                      accessibilityState={{ selected: isColorOpen }}
                     />
                   </View>
 
-                  <Text className="text-stone-50 text-2xl font-bold text-center mb-2">
+                  <Text className="text-stone-900 dark:text-stone-50 text-2xl font-bold text-center mb-2">
                     {formatSeconds(value)}
                   </Text>
 
@@ -243,15 +262,15 @@ export function TimerConfigForm({ config, onChange }: Props) {
       )}
 
       <View className="mb-4">
-        <Text className="text-stone-500 text-xs font-semibold uppercase tracking-wide mb-2">
+        <Text className="text-stone-400 dark:text-stone-500 text-xs font-semibold uppercase tracking-wide mb-2">
           Charge
         </Text>
-        <View className="bg-stone-800 rounded-2xl px-4 py-3 border border-stone-700">
+        <View className="bg-stone-100 dark:bg-stone-800 rounded-3xl px-4 py-3 border border-stone-300 dark:border-stone-700/50">
           <View className="flex-row items-center justify-center gap-2">
             <StepButton label="-10" onPress={() => adjust('loadKg', -10, 0)} />
             <StepButton label="-5" onPress={() => adjust('loadKg', -5, 0)} />
             <StepButton label="-1" onPress={() => adjust('loadKg', -1, 0)} />
-            <Text className="text-stone-50 text-xl font-bold w-16 text-center">
+            <Text className="text-stone-900 dark:text-stone-50 text-xl font-bold w-16 text-center">
               {config.loadKg ?? 0} kg
             </Text>
             <StepButton label="+1" onPress={() => adjust('loadKg', 1, 0)} />

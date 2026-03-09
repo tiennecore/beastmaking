@@ -3,20 +3,31 @@ import {
   ScrollView,
   Text,
   View,
-  TouchableOpacity,
   TextInput,
   Pressable,
   Alert,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { PROTOCOLS } from '@/constants/protocols';
 import { GRIPS } from '@/constants/grips';
 import { saveCustomWorkout } from '@/lib/storage';
+import { useThemeColors } from '@/lib/theme';
 import type { CustomWorkout, WorkoutStep, TimerConfig, GripType } from '@/types';
 
 type Mode = 'compose' | 'free';
 
-const EMOJI_OPTIONS = ['\u{1F4AA}', '\u{1F525}', '\u26A1', '\u{1F3CB}\uFE0F', '\u{1F9D7}', '\u{1F3AF}', '\u{1F9B4}', '\u{1F30A}'];
+const ICONS: Array<keyof typeof Ionicons.glyphMap> = [
+  'barbell-outline',
+  'flame-outline',
+  'flash-outline',
+  'body-outline',
+  'fitness-outline',
+  'heart-outline',
+  'trophy-outline',
+  'rocket-outline',
+];
 
 const FREE_DEFAULTS: TimerConfig = {
   prepDuration: 5,
@@ -54,16 +65,18 @@ function NumericRow({
 }) {
   return (
     <View className="flex-row items-center justify-between py-2">
-      <Text className="text-stone-300 flex-1">{label}</Text>
+      <Text className="text-stone-600 dark:text-stone-300 flex-1">{label}</Text>
       <View className="flex-row items-center gap-2">
         <Pressable
-          className="bg-stone-700 rounded-md w-9 h-9 items-center justify-center active:bg-stone-600"
+          className="bg-stone-200 dark:bg-stone-700 rounded-md w-11 h-11 items-center justify-center active:bg-stone-600"
           onPress={() => onChange(Math.max(min, value - 1))}
+          accessibilityRole="button"
+          accessibilityLabel={`Réduire ${label}`}
         >
-          <Text className="text-white font-bold">-</Text>
+          <Text className="text-stone-900 dark:text-stone-50 font-bold">-</Text>
         </Pressable>
         <TextInput
-          className="bg-stone-700 rounded-md text-white text-center font-bold w-14 h-9 px-1"
+          className="bg-stone-200 dark:bg-stone-700 rounded-md text-stone-900 dark:text-stone-50 text-center font-bold w-14 h-11 px-1"
           value={String(value)}
           onChangeText={(t) => {
             const n = parseInt(t, 10);
@@ -72,10 +85,12 @@ function NumericRow({
           keyboardType="numeric"
         />
         <Pressable
-          className="bg-stone-700 rounded-md w-9 h-9 items-center justify-center active:bg-stone-600"
+          className="bg-stone-200 dark:bg-stone-700 rounded-md w-11 h-11 items-center justify-center active:bg-stone-600"
           onPress={() => onChange(value + 1)}
+          accessibilityRole="button"
+          accessibilityLabel={`Augmenter ${label}`}
         >
-          <Text className="text-white font-bold">+</Text>
+          <Text className="text-stone-900 dark:text-stone-50 font-bold">+</Text>
         </Pressable>
       </View>
     </View>
@@ -93,7 +108,7 @@ function StepGripPicker({
 }) {
   return (
     <View className="mt-2">
-      <Text className="text-stone-500 text-xs uppercase mb-1">
+      <Text className="text-stone-400 dark:text-stone-500 text-xs uppercase mb-1">
         Prehension
       </Text>
       <View className="flex-row flex-wrap gap-2">
@@ -106,10 +121,11 @@ function StepGripPicker({
               className={`px-3 py-1 rounded-full border ${
                 active
                   ? 'bg-orange-500 border-orange-500'
-                  : 'bg-stone-800 border-stone-700'
+                  : 'bg-stone-100 dark:bg-stone-800 border-stone-300 dark:border-stone-700/50'
               }`}
+              style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}
             >
-              <Text className={`text-xs ${active ? 'text-white font-bold' : 'text-stone-300'}`}>
+              <Text className={`text-xs ${active ? 'text-white font-bold' : 'text-stone-600 dark:text-stone-300'}`}>
                 {grip.name}
               </Text>
             </Pressable>
@@ -126,7 +142,8 @@ export default function CreateWorkoutScreen() {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>('compose');
   const [name, setName] = useState('');
-  const [icon, setIcon] = useState(EMOJI_OPTIONS[0]);
+  const [icon, setIcon] = useState<keyof typeof Ionicons.glyphMap>(ICONS[0]);
+  const colors = useThemeColors();
   const [saving, setSaving] = useState(false);
 
   // Compose mode state
@@ -264,47 +281,62 @@ export default function CreateWorkoutScreen() {
   // --- Render ---
 
   return (
-    <ScrollView className="flex-1 bg-stone-950 px-4 pt-4">
-      <Text className="text-white text-2xl font-bold mb-6">
+    <ScrollView className="flex-1 bg-white dark:bg-stone-950 px-5 pt-4">
+      <Text className="text-stone-900 dark:text-stone-50 text-2xl font-bold mb-6">
         Creer un entrainement
       </Text>
 
       {/* Mode toggle */}
-      <View className="flex-row bg-stone-800 rounded-xl p-1 mb-6">
+      <View className="flex-row bg-stone-100 dark:bg-stone-800 rounded-xl p-1 mb-6">
         <Pressable
           className={`flex-1 py-3 rounded-lg items-center ${
             mode === 'compose' ? 'bg-orange-500' : ''
           }`}
-          onPress={() => setMode('compose')}
+          onPress={() => {
+            setMode('compose');
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          }}
+          style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: mode === 'compose' }}
+          accessibilityLabel="Composer"
         >
-          <Text className="text-white font-semibold">Composer</Text>
+          <Text className={`font-semibold ${mode === 'compose' ? 'text-white' : 'text-stone-500 dark:text-stone-400'}`}>Composer</Text>
         </Pressable>
         <Pressable
           className={`flex-1 py-3 rounded-lg items-center ${
             mode === 'free' ? 'bg-orange-500' : ''
           }`}
-          onPress={() => setMode('free')}
+          onPress={() => {
+            setMode('free');
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          }}
+          style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: mode === 'free' }}
+          accessibilityLabel="Timer libre"
         >
-          <Text className="text-white font-semibold">Timer libre</Text>
+          <Text className={`font-semibold ${mode === 'free' ? 'text-white' : 'text-stone-500 dark:text-stone-400'}`}>Timer libre</Text>
         </Pressable>
       </View>
 
       {/* Workout name */}
-      <Text className="text-stone-500 text-xs font-semibold uppercase tracking-wide mb-2">
+      <Text className="text-stone-400 dark:text-stone-500 text-xs font-semibold uppercase tracking-wide mb-2">
         Nom
       </Text>
       <TextInput
-        className="bg-stone-800 border border-stone-700 rounded-lg px-4 py-3 text-white mb-6"
+        className="bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-700/50 rounded-lg px-4 py-3 text-stone-900 dark:text-stone-50 mb-6"
         placeholder="Nom de l'entrainement"
-        placeholderTextColor="#737373"
+        placeholderTextColor={colors.textMuted}
         value={name}
         onChangeText={setName}
+        accessibilityLabel="Nom de l'entraînement"
       />
 
       {/* ==================== COMPOSE MODE ==================== */}
       {mode === 'compose' && (
         <View className="mb-6">
-          <Text className="text-stone-500 text-xs font-semibold uppercase tracking-wide mb-3">
+          <Text className="text-stone-400 dark:text-stone-500 text-xs font-semibold uppercase tracking-wide mb-3">
             Etapes
           </Text>
 
@@ -315,44 +347,51 @@ export default function CreateWorkoutScreen() {
             return (
               <View
                 key={`compose-${index}`}
-                className="bg-stone-800 border border-stone-700 rounded-2xl p-4 mb-3"
+                className="bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-700/50 rounded-3xl p-4 mb-3"
               >
                 {/* Header */}
                 <View className="flex-row items-center justify-between mb-3">
                   <View className="flex-row items-center flex-1">
                     <Text className="text-lg mr-2">{protocol.icon}</Text>
-                    <Text className="text-white font-bold flex-1" numberOfLines={1}>
+                    <Text className="text-stone-900 dark:text-stone-50 font-bold flex-1" numberOfLines={1}>
                       {protocol.name}
                     </Text>
                   </View>
                   <View className="flex-row items-center gap-1">
                     <Pressable
-                      className="bg-stone-700 rounded-md w-8 h-8 items-center justify-center"
+                      className="bg-stone-200 dark:bg-stone-700 rounded-md w-11 h-11 items-center justify-center"
                       onPress={() => moveComposeStep(index, -1)}
                       disabled={index === 0}
+                      accessibilityRole="button"
+                      accessibilityLabel="Monter l'étape"
                     >
-                      <Text className={`text-sm font-bold ${index === 0 ? 'text-stone-600' : 'text-white'}`}>
-                        {'\u2191'}
-                      </Text>
+                      <Ionicons
+                        name="chevron-up"
+                        size={18}
+                        color={index === 0 ? '#78716C' : colors.text}
+                      />
                     </Pressable>
                     <Pressable
-                      className="bg-stone-700 rounded-md w-8 h-8 items-center justify-center"
+                      className="bg-stone-200 dark:bg-stone-700 rounded-md w-11 h-11 items-center justify-center"
                       onPress={() => moveComposeStep(index, 1)}
                       disabled={index === composeSteps.length - 1}
+                      accessibilityRole="button"
+                      accessibilityLabel="Descendre l'étape"
                     >
-                      <Text
-                        className={`text-sm font-bold ${
-                          index === composeSteps.length - 1 ? 'text-stone-600' : 'text-white'
-                        }`}
-                      >
-                        {'\u2193'}
-                      </Text>
+                      <Ionicons
+                        name="chevron-down"
+                        size={18}
+                        color={index === composeSteps.length - 1 ? '#78716C' : colors.text}
+                      />
                     </Pressable>
                     <Pressable
-                      className="bg-stone-700 rounded-md w-8 h-8 items-center justify-center"
+                      className="bg-stone-200 dark:bg-stone-700 rounded-md w-11 h-11 items-center justify-center"
                       onPress={() => removeComposeStep(index)}
+                      style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}
+                      accessibilityRole="button"
+                      accessibilityLabel="Supprimer l'étape"
                     >
-                      <Text className="text-red-400 font-bold text-sm">X</Text>
+                      <Ionicons name="close-circle-outline" size={20} color="#FB923C" />
                     </Pressable>
                   </View>
                 </View>
@@ -382,20 +421,21 @@ export default function CreateWorkoutScreen() {
 
           {/* Protocol picker */}
           {showProtocolPicker ? (
-            <View className="bg-stone-800 border border-stone-700 rounded-2xl p-3 mb-3">
-              <Text className="text-stone-400 text-sm mb-2">
+            <View className="bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-700/50 rounded-3xl p-3 mb-3">
+              <Text className="text-stone-500 dark:text-stone-400 text-sm mb-2">
                 Choisir un protocole :
               </Text>
               {PROTOCOLS.map((p) => (
                 <Pressable
                   key={p.id}
-                  className="flex-row items-center py-3 border-b border-stone-700"
+                  className="flex-row items-center py-3 border-b border-stone-300 dark:border-stone-700/50"
                   onPress={() => addProtocolStep(p.id)}
+                  style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}
                 >
                   <Text className="text-lg mr-3">{p.icon}</Text>
                   <View className="flex-1">
-                    <Text className="text-white font-semibold">{p.name}</Text>
-                    <Text className="text-stone-400 text-xs" numberOfLines={1}>
+                    <Text className="text-stone-900 dark:text-stone-50 font-semibold">{p.name}</Text>
+                    <Text className="text-stone-500 dark:text-stone-400 text-xs" numberOfLines={1}>
                       {p.summary}
                     </Text>
                   </View>
@@ -404,20 +444,24 @@ export default function CreateWorkoutScreen() {
               <Pressable
                 className="mt-2 items-center py-2"
                 onPress={() => setShowProtocolPicker(false)}
+                style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}
               >
-                <Text className="text-stone-400 font-semibold">Annuler</Text>
+                <Text className="text-stone-500 dark:text-stone-400 font-semibold">Annuler</Text>
               </Pressable>
             </View>
           ) : (
-            <TouchableOpacity
+            <Pressable
               className="border border-dashed border-stone-600 rounded-xl py-4 items-center"
-              onPress={() => setShowProtocolPicker(true)}
-              activeOpacity={0.7}
+              onPress={() => {
+                setShowProtocolPicker(true);
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }}
+              style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}
             >
-              <Text className="text-stone-400 font-semibold">
+              <Text className="text-stone-500 dark:text-stone-400 font-semibold">
                 + Ajouter un protocole
               </Text>
-            </TouchableOpacity>
+            </Pressable>
           )}
         </View>
       )}
@@ -425,35 +469,39 @@ export default function CreateWorkoutScreen() {
       {/* ==================== FREE MODE ==================== */}
       {mode === 'free' && (
         <View className="mb-6">
-          <Text className="text-stone-500 text-xs font-semibold uppercase tracking-wide mb-3">
+          <Text className="text-stone-400 dark:text-stone-500 text-xs font-semibold uppercase tracking-wide mb-3">
             Etapes
           </Text>
 
           {freeSteps.map((step, index) => (
             <View
               key={`free-${index}`}
-              className="bg-stone-800 border border-stone-700 rounded-2xl p-4 mb-3"
+              className="bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-700/50 rounded-3xl p-4 mb-3"
             >
               {/* Header with remove */}
               <View className="flex-row items-center justify-between mb-3">
-                <Text className="text-stone-400 text-xs font-semibold uppercase">
+                <Text className="text-stone-500 dark:text-stone-400 text-xs font-semibold uppercase">
                   Etape {index + 1}
                 </Text>
                 <Pressable
-                  className="bg-stone-700 rounded-md w-8 h-8 items-center justify-center"
+                  className="bg-stone-200 dark:bg-stone-700 rounded-md w-11 h-11 items-center justify-center"
                   onPress={() => removeFreeStep(index)}
+                  style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}
+                  accessibilityRole="button"
+                  accessibilityLabel="Supprimer l'étape"
                 >
-                  <Text className="text-red-400 font-bold text-sm">X</Text>
+                  <Ionicons name="close-circle-outline" size={20} color="#FB923C" />
                 </Pressable>
               </View>
 
               {/* Step name */}
               <TextInput
-                className="bg-stone-700 border border-stone-600 rounded-lg px-3 py-2 text-white mb-3"
+                className="bg-stone-200 dark:bg-stone-700 border border-stone-600/50 rounded-lg px-3 py-2 text-stone-900 dark:text-stone-50 mb-3"
                 placeholder="Nom de l'etape"
-                placeholderTextColor="#737373"
+                placeholderTextColor={colors.textMuted}
                 value={step.name}
                 onChangeText={(t) => updateFreeStep(index, { name: t })}
+                accessibilityLabel="Nom de l'étape"
               />
 
               {/* Numeric configs */}
@@ -488,49 +536,68 @@ export default function CreateWorkoutScreen() {
             </View>
           ))}
 
-          <TouchableOpacity
+          <Pressable
             className="border border-dashed border-stone-600 rounded-xl py-4 items-center"
-            onPress={addFreeStep}
-            activeOpacity={0.7}
+            onPress={() => {
+              addFreeStep();
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }}
+            style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}
           >
-            <Text className="text-stone-400 font-semibold">
+            <Text className="text-stone-500 dark:text-stone-400 font-semibold">
               + Ajouter une etape
             </Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       )}
 
-      {/* ==================== EMOJI PICKER ==================== */}
-      <Text className="text-stone-500 text-xs font-semibold uppercase tracking-wide mb-2">
+      {/* ==================== ICON PICKER ==================== */}
+      <Text className="text-stone-400 dark:text-stone-500 text-xs font-semibold uppercase tracking-wide mb-2">
         Icone
       </Text>
-      <View className="flex-row gap-3 mb-6">
-        {EMOJI_OPTIONS.map((emoji) => (
+      <View className="flex-row flex-wrap gap-3 mb-6">
+        {ICONS.map((iconName) => (
           <Pressable
-            key={emoji}
-            onPress={() => setIcon(emoji)}
+            key={iconName}
+            onPress={() => setIcon(iconName)}
             className={`w-12 h-12 rounded-xl items-center justify-center ${
-              icon === emoji ? 'bg-orange-500' : 'bg-stone-800 border border-stone-700'
+              icon === iconName ? 'bg-orange-500' : 'bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-700/50'
             }`}
+            style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}
+            accessibilityRole="button"
+            accessibilityLabel={`Icône ${iconName}`}
+            accessibilityState={{ selected: icon === iconName }}
           >
-            <Text className="text-2xl">{emoji}</Text>
+            <Ionicons
+              name={iconName}
+              size={24}
+              color={icon === iconName ? '#fff' : colors.textSecondary}
+            />
           </Pressable>
         ))}
       </View>
 
       {/* ==================== SAVE BUTTON ==================== */}
-      <TouchableOpacity
+      <Pressable
         className={`rounded-xl py-4 items-center mb-8 ${
-          canSave && !saving ? 'bg-orange-500' : 'bg-stone-700'
+          canSave && !saving ? 'bg-orange-500' : 'bg-stone-200 dark:bg-stone-700'
         }`}
-        onPress={handleSave}
+        onPress={() => {
+          handleSave();
+          if (canSave && !saving) {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          }
+        }}
         disabled={!canSave || saving}
-        activeOpacity={0.8}
+        style={({ pressed }) => ({ transform: [{ scale: pressed && (canSave && !saving) ? 0.97 : 1 }] })}
+        accessibilityRole="button"
+        accessibilityLabel="Enregistrer l'entraînement"
+        accessibilityState={{ disabled: !canSave }}
       >
         <Text className="text-white text-xl font-bold">
           {saving ? 'Enregistrement...' : 'Enregistrer'}
         </Text>
-      </TouchableOpacity>
+      </Pressable>
 
       <View className="h-8" />
     </ScrollView>

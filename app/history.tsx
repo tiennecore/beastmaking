@@ -1,6 +1,7 @@
-import { useCallback, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { View, Text, ScrollView, Pressable } from 'react-native';
 import { useFocusEffect } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import { loadHistory } from '@/lib/storage';
 import { SessionHistoryEntry } from '@/types';
 import { getGripById } from '@/constants/grips';
@@ -63,9 +64,9 @@ function EntryCard({ entry }: { entry: SessionHistoryEntry }) {
   const { protocol, grips, totalDuration, completed, config } = result;
 
   return (
-    <View className="bg-stone-800 rounded-2xl p-4 mb-3">
+    <View className="bg-stone-100 dark:bg-stone-800 rounded-3xl p-4 mb-3">
       <View className="flex-row items-center justify-between mb-2">
-        <Text className="text-white text-base font-bold">
+        <Text className="text-stone-900 dark:text-stone-50 text-base font-bold">
           {protocol.icon} {protocol.name}
         </Text>
         <Text className={completed ? 'text-green-400 text-sm' : 'text-yellow-400 text-sm'}>
@@ -73,19 +74,19 @@ function EntryCard({ entry }: { entry: SessionHistoryEntry }) {
         </Text>
       </View>
 
-      <Text className="text-stone-400 text-sm mb-1">{formatDate(entry.date)}</Text>
+      <Text className="text-stone-500 dark:text-stone-400 text-sm mb-1">{formatDate(entry.date)}</Text>
 
       <View className="flex-row flex-wrap gap-x-4 gap-y-1 mt-1">
-        <Text className="text-stone-300 text-sm">
+        <Text className="text-stone-600 dark:text-stone-300 text-sm">
           {formatDuration(totalDuration)}
         </Text>
         {grips.length > 0 && (
-          <Text className="text-stone-300 text-sm">
+          <Text className="text-stone-600 dark:text-stone-300 text-sm">
             {grips.map((g) => getGripById(g)?.name ?? g).join(', ')}
           </Text>
         )}
         {config.loadKg != null && config.loadKg > 0 && (
-          <Text className="text-stone-300 text-sm">
+          <Text className="text-stone-600 dark:text-stone-300 text-sm">
             +{config.loadKg} kg
           </Text>
         )}
@@ -104,46 +105,62 @@ export default function HistoryScreen() {
     }, [])
   );
 
-  const now = Date.now();
-  const cutoffDays = viewMode === 'week' ? 7 : 30;
-  const cutoff = now - cutoffDays * 24 * 60 * 60 * 1000;
-  const filtered = history.filter((e) => new Date(e.date).getTime() >= cutoff);
+  const { filtered, grouped, sortedKeys } = useMemo(() => {
+    const now = Date.now();
+    const cutoffDays = viewMode === 'week' ? 7 : 30;
+    const cutoff = now - cutoffDays * 24 * 60 * 60 * 1000;
+    const filtered = history.filter((e) => new Date(e.date).getTime() >= cutoff);
 
-  const grouped =
-    viewMode === 'week'
-      ? groupBy(filtered, (e) => getDayKey(e.date))
-      : groupBy(filtered, (e) => getWeekKey(e.date));
+    const grouped =
+      viewMode === 'week'
+        ? groupBy(filtered, (e) => getDayKey(e.date))
+        : groupBy(filtered, (e) => getWeekKey(e.date));
 
-  const sortedKeys = [...grouped.keys()].sort((a, b) => b.localeCompare(a));
+    const sortedKeys = [...grouped.keys()].sort((a, b) => b.localeCompare(a));
+
+    return { filtered, grouped, sortedKeys };
+  }, [history, viewMode]);
 
   return (
-    <ScrollView className="flex-1 bg-stone-950 px-4 pt-4">
-      <Text className="text-white text-2xl font-bold mb-4">Historique</Text>
+    <ScrollView className="flex-1 bg-white dark:bg-stone-950 px-5 pt-4">
+      <Text className="text-stone-900 dark:text-stone-50 text-2xl font-bold mb-4">Historique</Text>
 
-      <View className="flex-row bg-stone-800 rounded-xl p-1 mb-6">
-        <TouchableOpacity
+      <View className="flex-row bg-stone-100 dark:bg-stone-800 rounded-xl p-1 mb-6">
+        <Pressable
           className={`flex-1 py-2 rounded-lg items-center ${viewMode === 'week' ? 'bg-orange-500' : ''}`}
-          onPress={() => setViewMode('week')}
-          activeOpacity={0.8}
+          onPress={() => {
+            setViewMode('week');
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          }}
+          style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: viewMode === 'week' }}
+          accessibilityLabel="7 derniers jours"
         >
-          <Text className={`font-bold ${viewMode === 'week' ? 'text-white' : 'text-stone-400'}`}>
+          <Text className={`font-bold ${viewMode === 'week' ? 'text-white' : 'text-stone-500 dark:text-stone-400'}`}>
             Semaine
           </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
+        </Pressable>
+        <Pressable
           className={`flex-1 py-2 rounded-lg items-center ${viewMode === 'month' ? 'bg-orange-500' : ''}`}
-          onPress={() => setViewMode('month')}
-          activeOpacity={0.8}
+          onPress={() => {
+            setViewMode('month');
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          }}
+          style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: viewMode === 'month' }}
+          accessibilityLabel="30 derniers jours"
         >
-          <Text className={`font-bold ${viewMode === 'month' ? 'text-white' : 'text-stone-400'}`}>
+          <Text className={`font-bold ${viewMode === 'month' ? 'text-white' : 'text-stone-500 dark:text-stone-400'}`}>
             Mois
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       {filtered.length === 0 ? (
         <View className="items-center justify-center py-20">
-          <Text className="text-stone-400 text-lg">Aucune séance enregistrée</Text>
+          <Text className="text-stone-500 dark:text-stone-400 text-lg">Aucune séance enregistrée</Text>
         </View>
       ) : (
         sortedKeys.map((key) => {
@@ -155,7 +172,10 @@ export default function HistoryScreen() {
 
           return (
             <View key={key} className="mb-5">
-              <Text className="text-stone-400 text-sm font-bold uppercase mb-2">
+              <Text
+                className="text-stone-500 dark:text-stone-400 text-sm font-bold uppercase mb-2"
+                accessibilityRole="header"
+              >
                 {label}
               </Text>
               {entries.map((entry) => (

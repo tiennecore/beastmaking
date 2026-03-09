@@ -5,7 +5,9 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "beastmaking",
-    "platforms": ["android"],
+    "platforms": [
+      "android"
+    ],
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
@@ -23,7 +25,9 @@
       }
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      ["expo-audio", { "enableBackgroundPlayback": true }],
+      "expo-notifications"
     ]
   }
 }

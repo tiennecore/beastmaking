@@ -7,7 +7,7 @@ import { CrimpLearningSection } from '@/components/library/CrimpLearningSection'
 
 export default function LibraryScreen() {
   return (
-    <ScrollView className="flex-1 bg-stone-950 px-4 pt-4">
+    <ScrollView className="flex-1 bg-white dark:bg-stone-950 px-5 pt-4">
       <PrinciplesSection />
       <EnergySystemsSection />
       <GripsSection />

@@ -13,6 +13,7 @@ type TimerState = {
   isPaused: boolean;
   startTime: number | null;
   elapsedTotal: number;
+  lastResult: SessionResult | null;
 
   currentPhase: () => Phase | null;
   progress: () => {
@@ -29,7 +30,8 @@ type TimerState = {
   resume: () => void;
   stop: () => void;
   tick: () => void;
-  getResult: () => SessionResult | null;
+  fastForward: (elapsed: number) => void;
+  skipPhase: () => void;
 };
 
 export const useTimerStore = create<TimerState>((set, get) => ({
@@ -43,6 +45,7 @@ export const useTimerStore = create<TimerState>((set, get) => ({
   isPaused: false,
   startTime: null,
   elapsedTotal: 0,
+  lastResult: null,
 
   currentPhase: () => {
     const { phases, currentPhaseIndex } = get();
@@ -97,12 +100,34 @@ export const useTimerStore = create<TimerState>((set, get) => ({
   },
 
   stop: () => {
-    const { startTime } = get();
+    const { protocol, grips, config, phases, currentPhaseIndex, startTime } = get();
     const elapsed = startTime ? (Date.now() - startTime) / 1000 : 0;
+    const completed = currentPhaseIndex >= phases.length;
+
+    let completedSets = 0;
+    let completedRounds = 0;
+    const lastIndex = Math.min(currentPhaseIndex, phases.length - 1);
+    for (let i = lastIndex; i >= 0; i--) {
+      if (phases[i].type === 'hang') {
+        completedSets = phases[i].set ?? 0;
+        completedRounds = phases[i].round ?? 0;
+        break;
+      }
+    }
+
     set({
       isRunning: false,
       isPaused: false,
       elapsedTotal: elapsed,
+      lastResult: protocol && config ? {
+        protocol,
+        grips,
+        config,
+        completedSets,
+        completedRounds,
+        totalDuration: elapsed,
+        completed,
+      } : null,
     });
   },
 
@@ -122,15 +147,9 @@ export const useTimerStore = create<TimerState>((set, get) => ({
     const nextIndex = currentPhaseIndex + 1;
 
     if (nextIndex >= phases.length) {
-      // All phases done
-      const { startTime } = get();
-      const elapsed = startTime ? (Date.now() - startTime) / 1000 : 0;
-      set({
-        timeRemaining: 0,
-        currentPhaseIndex: nextIndex,
-        isRunning: false,
-        elapsedTotal: elapsed,
-      });
+      // All phases done — advance index then stop (computes lastResult)
+      set({ timeRemaining: 0, currentPhaseIndex: nextIndex });
+      get().stop();
       return;
     }
 
@@ -140,37 +159,47 @@ export const useTimerStore = create<TimerState>((set, get) => ({
     });
   },
 
-  getResult: () => {
-    const { protocol, grips, config, phases, currentPhaseIndex } = get();
+  skipPhase: () => {
+    const { phases, currentPhaseIndex, isRunning } = get();
+    if (!isRunning) return;
+    const nextIndex = currentPhaseIndex + 1;
+    if (nextIndex >= phases.length) {
+      get().stop();
+      return;
+    }
+    set({
+      currentPhaseIndex: nextIndex,
+      timeRemaining: phases[nextIndex].duration,
+    });
+  },
 
-    if (!protocol || !config) return null;
+  fastForward: (elapsed: number) => {
+    const { isRunning, isPaused, timeRemaining, currentPhaseIndex, phases } = get();
+    if (!isRunning || isPaused) return;
 
-    const completed = currentPhaseIndex >= phases.length;
+    let remaining = elapsed;
+    let phaseIdx = currentPhaseIndex;
+    let phaseTime = timeRemaining;
 
-    // Find the last HANG phase before or at currentPhaseIndex to determine progress
-    let completedSets = 0;
-    let completedRounds = 0;
-    const lastIndex = Math.min(currentPhaseIndex, phases.length - 1);
-
-    for (let i = lastIndex; i >= 0; i--) {
-      if (phases[i].type === 'hang') {
-        completedSets = phases[i].set ?? 0;
-        completedRounds = phases[i].round ?? 0;
-        break;
+    while (remaining > 0 && phaseIdx < phases.length) {
+      if (remaining >= phaseTime) {
+        remaining -= phaseTime;
+        phaseIdx++;
+        if (phaseIdx < phases.length) {
+          phaseTime = phases[phaseIdx].duration;
+        }
+      } else {
+        phaseTime -= remaining;
+        remaining = 0;
       }
     }
 
-    const { startTime } = get();
-    const totalDuration = startTime ? (Date.now() - startTime) / 1000 : 0;
-
-    return {
-      protocol,
-      grips,
-      config,
-      completedSets,
-      completedRounds,
-      totalDuration,
-      completed,
-    };
+    if (phaseIdx >= phases.length) {
+      set({ timeRemaining: 0, currentPhaseIndex: phaseIdx });
+      get().stop();
+    } else {
+      set({ currentPhaseIndex: phaseIdx, timeRemaining: phaseTime });
+    }
   },
+
 }));

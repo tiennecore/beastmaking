@@ -12,11 +12,11 @@ const PRINCIPLES = [
 export function PrinciplesSection() {
   return (
     <View className="mb-6">
-      <Text className="text-white text-xl font-bold mb-3">Les 6 principes</Text>
+      <Text className="text-stone-900 dark:text-stone-50 text-xl font-bold mb-3">Les 6 principes</Text>
       {PRINCIPLES.map((p, i) => (
-        <View key={p.name} className="bg-stone-800 rounded-xl p-3 mb-2">
-          <Text className="text-white font-bold">{i + 1}. {p.name}</Text>
-          <Text className="text-stone-400 text-sm">{p.desc}</Text>
+        <View key={p.name} className="bg-stone-100 dark:bg-stone-800 rounded-2xl p-3 mb-2">
+          <Text className="text-stone-900 dark:text-stone-50 font-bold">{i + 1}. {p.name}</Text>
+          <Text className="text-stone-500 dark:text-stone-400 text-sm">{p.desc}</Text>
         </View>
       ))}
     </View>
