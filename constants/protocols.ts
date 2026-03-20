@@ -23,12 +23,24 @@ export const PROTOCOLS: Protocol[] = [
       restBetweenReps: 150,
       reps: 4,
       sets: 3,
-      loadKg: 0,
+
       restBetweenSets: 180,
     },
     loadAdvice: 'Dosez pour lâcher entre 5 et 12 secondes. Si vous tenez plus longtemps, ajoutez du poids.',
     recoveryAdvice: 'Travaillez la force uniquement quand vous êtes frais. Prévoyez au moins 48h avant la prochaine séance de force.',
     frequencyAdvice: '1 à 2 fois par semaine, jamais fatigué.',
+    usageGuide: [
+      { title: 'Descriptif', content: 'Entre 5 et 12 secondes de suspension. Une série = 3 à 5 répétitions.' },
+      { title: 'Séries', content: "Une série peut suffire. Sinon, jusqu'à 5 séries avec 5 préhensions différentes." },
+      { title: 'Charge', content: 'Dosez la charge de manière à lâcher au bout de 5 à 12 secondes grand maximum.' },
+      { title: 'Repos', content: "2 à 3 minutes entre deux suspensions, ou autant qu'il vous faut pour donner 100% de votre potentiel." },
+      { title: 'Quand', content: 'Ne travaillez la force que quand vous êtes frais et bien reposé.' },
+    ],
+    gripRecommendation: {
+      mode: 'perSet',
+      description: "Jusqu'à 5 séries avec 5 préhensions différentes",
+      defaultGrips: ['halfCrimp', 'open4', 'open3', 'fullCrimp', 'fullCrimpThumb'],
+    },
   },
   {
     id: 'max-long',
@@ -52,12 +64,24 @@ export const PROTOCOLS: Protocol[] = [
       restBetweenReps: 240,
       reps: 4,
       sets: 3,
-      loadKg: 0,
+
       restBetweenSets: 300,
     },
     loadAdvice: 'Dosez pour lâcher à 20 secondes maximum. Gains lents mais durables.',
     recoveryAdvice: 'Travaillez la force uniquement quand vous êtes frais. Prévoyez au moins 48h avant la prochaine séance de force.',
     frequencyAdvice: '1 à 2 fois par semaine, jamais fatigué.',
+    usageGuide: [
+      { title: 'Descriptif', content: '20 secondes de suspension. Une série = 3 à 5 répétitions.' },
+      { title: 'Séries', content: "Une série peut suffire. Sinon, jusqu'à 5 séries avec 5 préhensions différentes." },
+      { title: 'Charge', content: 'Dosez la charge de manière à lâcher au bout de 20 secondes grand maximum.' },
+      { title: 'Repos', content: "3 à 5 minutes entre deux suspensions, ou autant qu'il vous faut pour donner 100% de votre potentiel." },
+      { title: 'Quand', content: 'Ne travaillez la force que quand vous êtes frais et bien reposé.' },
+    ],
+    gripRecommendation: {
+      mode: 'perSet',
+      description: "Jusqu'à 5 séries avec 5 préhensions différentes",
+      defaultGrips: ['halfCrimp', 'open4', 'open3', 'fullCrimp', 'fullCrimpThumb'],
+    },
   },
   {
     id: 'tendons',
@@ -80,12 +104,24 @@ export const PROTOCOLS: Protocol[] = [
       restBetweenReps: 300,
       reps: 3,
       sets: 3,
-      loadKg: 0,
+
       restBetweenSets: 300,
     },
     loadAdvice: 'Dosez pour lâcher à environ 45 secondes. Maximum 3 séries en tout (1 par préhension).',
     recoveryAdvice: 'Travaillez la force uniquement quand vous êtes frais. Prévoyez au moins 48h avant la prochaine séance de force.',
     frequencyAdvice: '1 à 2 fois par semaine.',
+    usageGuide: [
+      { title: 'Descriptif', content: "30 à 45 secondes de suspension. Une série = 3 répétitions." },
+      { title: 'Séries', content: "Une série par type de préhension. Maximum 3 séries en tout." },
+      { title: 'Charge', content: "Dosez la charge de manière à lâcher au bout d'environ 45 secondes." },
+      { title: 'Repos', content: '5 minutes entre deux suspensions.' },
+      { title: 'Quand', content: 'Ne travaillez la force que quand vous êtes frais et bien reposé.' },
+    ],
+    gripRecommendation: {
+      mode: 'perSet',
+      description: '1 série par type de préhension (max 3 séries)',
+      defaultGrips: ['halfCrimp', 'open4', 'open3'],
+    },
   },
   {
     id: 'intermittent',
@@ -109,12 +145,24 @@ export const PROTOCOLS: Protocol[] = [
       restBetweenReps: 3,
       reps: 6,
       sets: 2,
-      loadKg: 0,
+
       restBetweenSets: 300,
     },
     loadAdvice: 'Confortable sur la réglette choisie. Le risque de blessure est faible.',
     recoveryAdvice: 'Travaillez la force uniquement quand vous êtes frais.',
     frequencyAdvice: '1 à 2 fois par semaine.',
+    usageGuide: [
+      { title: 'Descriptif', content: '7 secondes de suspension, 3 secondes de repos. 1 série = 6 répétitions = 1 minute.' },
+      { title: 'Séries', content: 'Une ou deux séries par type de préhension, avec un maximum de 3 préhensions par séance.' },
+      { title: 'Repos', content: '5 minutes entre deux séries.' },
+      { title: 'Progression', content: 'Allongez la suspension (ex: 8s) ou raccourcissez le repos (ex: 2s). Ajoutez du poids. Utilisez des prises plus petites.' },
+      { title: 'Quand', content: "Peu de risque de blessure. Peut être travaillé tout au long de l'année." },
+    ],
+    gripRecommendation: {
+      mode: 'perSet',
+      description: '1 à 2 séries par préhension (max 3 préhensions)',
+      defaultGrips: ['halfCrimp', 'open4', 'open3'],
+    },
   },
   {
     id: 'continuity-long',
@@ -138,7 +186,7 @@ export const PROTOCOLS: Protocol[] = [
       restBetweenReps: 3,
       reps: 6,
       sets: 10,
-      loadKg: 0,
+
       restBetweenSets: 60,
       rounds: 3,
       restBetweenRounds: 600,
@@ -146,6 +194,17 @@ export const PROTOCOLS: Protocol[] = [
     loadAdvice: "Délestez avec une poulie à 30-40% de votre max. Vous devez être légèrement fatigué, pas à bout.",
     recoveryAdvice: "Compatible avec le reste de l'entraînement. Peut être casé après une séance de grimpe, jamais avant une séance de force.",
     frequencyAdvice: '2 séances/semaine pendant minimum 8 semaines, maximum 16 semaines.',
+    usageGuide: [
+      { title: 'Descriptif', content: '6 × 1 suspension intermittente (7s/3s) sur une réglette confortable. 1 minute de repos = 1 série. 10 séries = 10 min de suspension.' },
+      { title: 'Tours', content: '3 tours, totalisant 30 minutes de suspension.' },
+      { title: 'Charge', content: "Délestez à 30-40% de votre max avec une poulie. L'idée : être légèrement fatigué, mais longtemps." },
+      { title: 'Repos', content: "Ratio travail/repos de 1 pour 1. 1 min entre les séries, 10 min entre les tours." },
+      { title: 'Quand', content: "Après une séance de grimpe, jamais avant une séance de force. Minimum 8 semaines." },
+    ],
+    gripRecommendation: {
+      mode: 'session',
+      description: 'Même réglette confortable pour toute la séance',
+    },
   },
   {
     id: 'continuity-short',
@@ -169,12 +228,23 @@ export const PROTOCOLS: Protocol[] = [
       restBetweenReps: 3,
       reps: 6,
       sets: 6,
-      loadKg: 0,
+
       restBetweenSets: 180,
     },
     loadAdvice: '70-80% de votre max. Vous devez tomber sur les 2 dernières séries des 2 derniers tours.',
     recoveryAdvice: 'Prévoyez un jour de repos le lendemain.',
     frequencyAdvice: '2×/semaine si priorité continuité, 1×/semaine si combiné avec force. Minimum 6 semaines.',
+    usageGuide: [
+      { title: 'Descriptif', content: '6 × 1 suspension intermittente (7s/3s). 3 min de repos = 1 série. 6 séries = 6 min de suspension.' },
+      { title: 'Tours', content: "Un tour suffit car l'intensité est très élevée." },
+      { title: 'Charge', content: '70-80% de votre max. Ajoutez du poids ou réduisez le délestage.' },
+      { title: 'Repos', content: 'Ratio travail/repos de 1 pour 3 (3 min de récupération entre les séries).' },
+      { title: 'Quand', content: "Prévoyez un jour de repos après. Minimum 6 semaines." },
+    ],
+    gripRecommendation: {
+      mode: 'session',
+      description: 'Même réglette pour toute la séance',
+    },
   },
   {
     id: 'weighted-pullups',
@@ -197,12 +267,17 @@ export const PROTOCOLS: Protocol[] = [
       restBetweenReps: 3,
       reps: 5,
       sets: 5,
-      loadKg: 0,
+
       restBetweenSets: 120,
     },
     loadAdvice: 'Maximum 5 répétitions. Redescendez toujours lentement et sans à-coups.',
     recoveryAdvice: 'Travaillez la force uniquement quand vous êtes frais. Prévoyez au moins 48h.',
     frequencyAdvice: '1 à 2 fois par semaine.',
+    usageGuide: [
+      { title: 'Descriptif', content: 'Lestez-vous et faites des tractions. Max 5 répétitions. Redescendez toujours très lentement et sans à-coups.' },
+      { title: 'Séries', content: '5 séries intercalées de 2 minutes de récupération.' },
+      { title: 'Quand', content: 'Ne travaillez la force que quand vous êtes frais et bien reposé.' },
+    ],
   },
   {
     id: 'negative-pullups',
@@ -225,12 +300,18 @@ export const PROTOCOLS: Protocol[] = [
       restBetweenReps: 0,
       reps: 1,
       sets: 5,
-      loadKg: 0,
+
       restBetweenSets: 180,
     },
     loadAdvice: 'Depuis menton au-dessus de la barre, descente en 8 secondes à tension maximale. Option 1 ou 2 bras.',
     recoveryAdvice: 'Travaillez la force uniquement quand vous êtes frais. Prévoyez au moins 48h.',
     frequencyAdvice: '1 à 2 fois par semaine.',
+    usageGuide: [
+      { title: 'Descriptif', content: 'Depuis menton au-dessus de la barre, descendez en gardant la tension maximale. La descente doit durer 8 secondes.' },
+      { title: 'Séries', content: '5 séries, 3 minutes de récupération entre chaque.' },
+      { title: 'Charge', content: 'Dosez la charge pour que la descente dure exactement 8 secondes. Option 1 ou 2 bras.' },
+      { title: 'Quand', content: 'Ne travaillez la force que quand vous êtes frais et bien reposé.' },
+    ],
   },
   {
     id: 'minute-pullups',
@@ -253,12 +334,17 @@ export const PROTOCOLS: Protocol[] = [
       restBetweenReps: 2,
       reps: 5,
       sets: 10,
-      loadKg: 0,
+
       restBetweenSets: 60,
     },
     loadAdvice: "X tractions au début de chaque minute, repos jusqu'à la fin de la minute. Ajoutez des pompes si la forme le permet.",
     recoveryAdvice: "Séance légère, peut être intégrée à n'importe quel jour.",
     frequencyAdvice: '2 à 3 fois par semaine.',
+    usageGuide: [
+      { title: 'Descriptif', content: "Chaque minute, faites un nombre de tractions prédéterminé, puis reposez-vous jusqu'à la fin de la minute. Recommencez 10 fois." },
+      { title: 'Progression', content: "Augmentez les tractions par minute. Ajoutez des pompes dans le temps restant. Augmentez la durée totale (12-15 min)." },
+      { title: 'Quand', content: "Séance légère, compatible avec n'importe quel jour." },
+    ],
   },
 ];
 

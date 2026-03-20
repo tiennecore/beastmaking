@@ -38,7 +38,7 @@ export function computePhaseSequence(config: TimerConfig): Phase[] {
     }
 
     const isLastRound = round === totalRounds;
-    if (!isLastRound && totalRounds > 1) {
+    if (!isLastRound && totalRounds > 1 && (config.restBetweenRounds ?? 0) > 0) {
       phases.push({
         type: 'restRound',
         duration: config.restBetweenRounds ?? 0,

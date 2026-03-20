@@ -1,10 +1,11 @@
 import { create } from 'zustand';
 import { Phase, computePhaseSequence } from '@/lib/timer-engine';
-import { TimerConfig, Protocol, GripType, SessionResult } from '@/types';
+import { TimerConfig, Protocol, SessionResult, GripMode, GripConfig } from '@/types';
 
 type TimerState = {
   protocol: Protocol | null;
-  grips: GripType[];
+  gripMode: GripMode;
+  gripConfigs: GripConfig[];
   config: TimerConfig | null;
   phases: Phase[];
   currentPhaseIndex: number;
@@ -14,6 +15,10 @@ type TimerState = {
   startTime: number | null;
   elapsedTotal: number;
   lastResult: SessionResult | null;
+  continuityMeta: {
+    mode: 'continuity-long' | 'continuity-short';
+    voieSessionData: Record<string, unknown>;
+  } | null;
 
   currentPhase: () => Phase | null;
   progress: () => {
@@ -24,7 +29,7 @@ type TimerState = {
     totalRounds: number;
   };
 
-  setup: (protocol: Protocol, grips: GripType[], config: TimerConfig) => void;
+  setup: (protocol: Protocol, gripMode: GripMode, gripConfigs: GripConfig[], config: TimerConfig) => void;
   start: () => void;
   pause: () => void;
   resume: () => void;
@@ -32,11 +37,13 @@ type TimerState = {
   tick: () => void;
   fastForward: (elapsed: number) => void;
   skipPhase: () => void;
+  setContinuityMeta: (meta: TimerState['continuityMeta']) => void;
 };
 
 export const useTimerStore = create<TimerState>((set, get) => ({
   protocol: null,
-  grips: [],
+  gripMode: 'session',
+  gripConfigs: [],
   config: null,
   phases: [],
   currentPhaseIndex: 0,
@@ -46,6 +53,7 @@ export const useTimerStore = create<TimerState>((set, get) => ({
   startTime: null,
   elapsedTotal: 0,
   lastResult: null,
+  continuityMeta: null,
 
   currentPhase: () => {
     const { phases, currentPhaseIndex } = get();
@@ -67,11 +75,12 @@ export const useTimerStore = create<TimerState>((set, get) => ({
     };
   },
 
-  setup: (protocol, grips, config) => {
+  setup: (protocol, gripMode, gripConfigs, config) => {
     const phases = computePhaseSequence(config);
     set({
       protocol,
-      grips,
+      gripMode,
+      gripConfigs,
       config,
       phases,
       currentPhaseIndex: 0,
@@ -80,6 +89,7 @@ export const useTimerStore = create<TimerState>((set, get) => ({
       isPaused: false,
       startTime: null,
       elapsedTotal: 0,
+      continuityMeta: null,
     });
   },
 
@@ -100,7 +110,7 @@ export const useTimerStore = create<TimerState>((set, get) => ({
   },
 
   stop: () => {
-    const { protocol, grips, config, phases, currentPhaseIndex, startTime } = get();
+    const { protocol, gripMode, gripConfigs, config, phases, currentPhaseIndex, startTime } = get();
     const elapsed = startTime ? (Date.now() - startTime) / 1000 : 0;
     const completed = currentPhaseIndex >= phases.length;
 
@@ -121,7 +131,8 @@ export const useTimerStore = create<TimerState>((set, get) => ({
       elapsedTotal: elapsed,
       lastResult: protocol && config ? {
         protocol,
-        grips,
+        gripMode,
+        gripConfigs,
         config,
         completedSets,
         completedRounds,
@@ -173,6 +184,8 @@ export const useTimerStore = create<TimerState>((set, get) => ({
     });
   },
 
+  setContinuityMeta: (meta) => set({ continuityMeta: meta }),
+
   fastForward: (elapsed: number) => {
     const { isRunning, isPaused, timeRemaining, currentPhaseIndex, phases } = get();
     if (!isRunning || isPaused) return;
@@ -198,7 +211,7 @@ export const useTimerStore = create<TimerState>((set, get) => ({
       set({ timeRemaining: 0, currentPhaseIndex: phaseIdx });
       get().stop();
     } else {
-      set({ currentPhaseIndex: phaseIdx, timeRemaining: phaseTime });
+      set({ currentPhaseIndex: phaseIdx, timeRemaining: Math.round(phaseTime) });
     }
   },
 

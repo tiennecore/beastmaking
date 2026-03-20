@@ -3,6 +3,11 @@ import { createAudioPlayer, AudioPlayer } from 'expo-audio';
 let shortBeep: AudioPlayer | null = null;
 let longBeep: AudioPlayer | null = null;
 
+// Native sound mode is disabled — foreground service native module not registered
+export function setNativeSoundMode(_enabled: boolean) {
+  // no-op: native TimerNativeModule is not registered, use expo-audio only
+}
+
 export function loadSounds() {
   shortBeep = createAudioPlayer(require('@/assets/sounds/beep-short.mp3'));
   longBeep = createAudioPlayer(require('@/assets/sounds/beep-long.mp3'));

@@ -1,9 +1,12 @@
-import { PlanGoal, PlanSessionType, PlannedSession, TrainingPlanTemplate } from '@/types';
+import { ClimbingActivity, PlanGoal, PlannedSession, SessionMode, TrainingPlanTemplate } from '@/types';
+
+type ActivityKey = 'hangboard' | 'bouldering' | 'route' | 'strength';
 
 type GeneratorInput = {
   goal: PlanGoal;
   daysPerWeek: number;
-  activities: PlanSessionType[];
+  activities: ActivityKey[];
+  hasHomeHangboard?: boolean;
 };
 
 const GOAL_CONFIGS: Record<PlanGoal, { force: number; endurance: number; climbing: number }> = {
@@ -23,7 +26,7 @@ function pickProtocols(type: 'force' | 'endurance' | 'pullups', index: number): 
 }
 
 export function generatePlan(input: GeneratorInput): TrainingPlanTemplate {
-  const { goal, daysPerWeek, activities } = input;
+  const { goal, daysPerWeek, activities, hasHomeHangboard = false } = input;
   const config = GOAL_CONFIGS[goal];
   const sessions: PlannedSession[] = [];
   let order = 1;
@@ -32,27 +35,53 @@ export function generatePlan(input: GeneratorInput): TrainingPlanTemplate {
   let climbingCount = 0;
   let lastWasForce = false;
 
-  const hasHangboard = activities.some((a) => a.startsWith('hangboard'));
+  const hasHangboard = activities.includes('hangboard');
   const hasBouldering = activities.includes('bouldering');
   const hasRoute = activities.includes('route');
   const hasStrength = activities.includes('strength');
 
   for (let day = 0; day < daysPerWeek; day++) {
-    // Rule: no 2 force sessions back-to-back
-    // Rule: endurance never before force -> place endurance after climbing
-    // Rule: at least 1 rest day per week
-
     // Force hangboard
     if (hasHangboard && forceCount < config.force && !lastWasForce) {
       const protocols = pickProtocols('force', forceCount);
-      sessions.push({
-        id: `s${order}`,
-        type: 'hangboard-force',
-        label: `Poutre — Force`,
-        description: forceCount === 0 ? 'Suspensions max courtes ou intermittentes' : 'Suspensions max longues ou tendons',
-        order,
-        protocolIds: protocols,
-      });
+
+      if (hasHomeHangboard) {
+        // Standalone session at home
+        sessions.push({
+          id: `s${order}`,
+          mode: 'exercise',
+          label: 'Poutre — Force',
+          description: forceCount === 0 ? 'Suspensions max courtes ou intermittentes' : 'Suspensions max longues ou tendons',
+          order,
+          protocolIds: protocols,
+          restAfterHours: 48,
+        });
+      } else {
+        // Must combine with climbing at the gym — defer to climbing block
+        // by not adding a standalone session; will be combined below
+        forceCount++;
+        lastWasForce = true;
+        order++;
+        // Add the combined session now
+        if (hasBouldering || hasRoute) {
+          const isRoute = hasRoute && !hasBouldering;
+          const climbingActivity: ClimbingActivity = isRoute ? 'route' : 'bouldering';
+          sessions.push({
+            id: `s${order - 1}`,
+            mode: 'climbing-exercise',
+            label: isRoute ? 'Voie + Poutre' : 'Bloc + Poutre',
+            description: 'Séance de grimpe avec poutre intégrée.',
+            order: order - 1,
+            climbingActivity,
+            exerciseTiming: 'after',
+            protocolIds: protocols,
+            restAfterHours: 48,
+          });
+          climbingCount++;
+        }
+        continue;
+      }
+
       forceCount++;
       lastWasForce = true;
       order++;
@@ -62,33 +91,66 @@ export function generatePlan(input: GeneratorInput): TrainingPlanTemplate {
     // Climbing (acts as spacer between force sessions)
     if ((hasBouldering || hasRoute) && climbingCount < config.climbing + Math.max(0, daysPerWeek - 3)) {
       const isRoute = hasRoute && (!hasBouldering || climbingCount % 2 === 1);
-      sessions.push({
-        id: `s${order}`,
-        type: isRoute ? 'route' : 'bouldering',
-        label: isRoute ? 'Voie' : 'Bloc',
-        description: isRoute ? 'Séance voie en salle ou falaise' : 'Séance bloc en salle',
-        order,
-      });
+      const climbingActivity: ClimbingActivity = isRoute ? 'route' : 'bouldering';
+
+      // If endurance is needed:
+      // - with home hangboard: combine with climbing at gym
+      // - without home hangboard: always combine (no standalone option)
+      const shouldCombineEndurance = hasHangboard && enduranceCount < config.endurance && climbingCount > 0;
+      if (shouldCombineEndurance) {
+        const protocols = pickProtocols('endurance', enduranceCount);
+        sessions.push({
+          id: `s${order}`,
+          mode: 'climbing-exercise',
+          label: isRoute ? 'Voie + Poutre' : 'Bloc + Poutre',
+          description: 'Séance de grimpe suivie de continuité sur poutre.',
+          order,
+          climbingActivity,
+          exerciseTiming: 'after',
+          protocolIds: protocols,
+          restAfterHours: 48,
+        });
+        enduranceCount++;
+      } else {
+        sessions.push({
+          id: `s${order}`,
+          mode: 'climbing',
+          label: isRoute ? 'Voie' : 'Bloc',
+          description: isRoute ? 'Séance voie en salle ou falaise' : 'Séance bloc en salle',
+          order,
+          climbingActivity,
+          restAfterHours: 24,
+        });
+      }
       climbingCount++;
       lastWasForce = false;
       order++;
       continue;
     }
 
-    // Endurance hangboard (after climbing, never before force)
+    // Standalone endurance hangboard
     if (hasHangboard && enduranceCount < config.endurance) {
       const protocols = pickProtocols('endurance', enduranceCount);
-      sessions.push({
-        id: `s${order}`,
-        type: 'hangboard-endurance',
-        label: 'Poutre — Endurance',
-        description: enduranceCount === 0 ? 'Continuité longue — endurance aérobie' : 'Continuité courte — anaérobie lactique',
-        order,
-        protocolIds: protocols,
-      });
+
+      if (hasHomeHangboard) {
+        // Can do it at home
+        sessions.push({
+          id: `s${order}`,
+          mode: 'exercise',
+          label: 'Poutre — Endurance',
+          description: enduranceCount === 0 ? 'Continuité longue — endurance aérobie' : 'Continuité courte — anaérobie lactique',
+          order,
+          protocolIds: protocols,
+          restAfterHours: 48,
+        });
+        enduranceCount++;
+        lastWasForce = false;
+        order++;
+        continue;
+      }
+      // Without home hangboard: skip standalone endurance — it must be combined with climbing
+      // (already handled in the climbing block above)
       enduranceCount++;
-      lastWasForce = false;
-      order++;
       continue;
     }
 
@@ -96,26 +158,33 @@ export function generatePlan(input: GeneratorInput): TrainingPlanTemplate {
     if (hasStrength && day === daysPerWeek - 1) {
       sessions.push({
         id: `s${order}`,
-        type: 'strength',
+        mode: 'exercise',
         label: 'Renforcement',
         description: 'Gainage, antagonistes, tractions complémentaires',
         order,
+        restAfterHours: 24,
       });
       lastWasForce = false;
       order++;
       continue;
     }
 
-    // Rest / active recovery
-    sessions.push({
-      id: `s${order}`,
-      type: day % 2 === 0 ? 'rest' : 'active-recovery',
-      label: day % 2 === 0 ? 'Repos' : 'Récup active',
-      description: day % 2 === 0 ? 'Repos complet' : 'Stretching, mobilité, cardio léger',
-      order,
-    });
-    lastWasForce = false;
-    order++;
+    // Filler climbing session if slots remain
+    if (hasBouldering || hasRoute) {
+      const climbingActivity: ClimbingActivity = hasRoute ? 'route' : 'bouldering';
+      sessions.push({
+        id: `s${order}`,
+        mode: 'climbing',
+        label: hasRoute ? 'Voie' : 'Bloc',
+        description: hasRoute ? 'Séance voie en salle ou falaise' : 'Séance bloc en salle',
+        order,
+        climbingActivity,
+        restAfterHours: 24,
+      });
+      climbingCount++;
+      lastWasForce = false;
+      order++;
+    }
   }
 
   const totalWeeks = goal === 'endurance' ? 10 : 8;

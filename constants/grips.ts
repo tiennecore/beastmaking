@@ -1,6 +1,22 @@
-import { GripInfo } from '@/types';
+import { GripInfo, HoldType, GripConfig } from '@/types';
 
 export const GRIPS: GripInfo[] = [
+  {
+    id: 'open1',
+    name: 'Tendu 1 doigt',
+    type: 'passive',
+    description: 'Un seul doigt en extension, charge maximale sur un seul tendon.',
+    keyPoints: 'Exercice avancé. Utile pour rééquilibrer la force digitale.',
+    warning: 'Très agressif. Réservé aux grimpeurs expérimentés.',
+  },
+  {
+    id: 'open2',
+    name: 'Tendu 2 doigts',
+    type: 'passive',
+    description: 'Deux doigts en extension, souvent majeur + annulaire.',
+    keyPoints: 'Renforce les doigts faibles. Progression avant open3.',
+    warning: 'Charge élevée par doigt. Progresser avec prudence.',
+  },
   {
     id: 'open3',
     name: 'Tendu 3 doigts',
@@ -56,5 +72,37 @@ export const GRIPS: GripInfo[] = [
 
 export const getGripById = (id: string): GripInfo | undefined =>
   GRIPS.find((g) => g.id === id);
+
+export type HoldInfo = {
+  id: HoldType;
+  name: string;
+  shortName: string;
+};
+
+export const HOLDS: HoldInfo[] = [
+  { id: 'flat', name: 'Plat', shortName: 'Plat' },
+  { id: 'crimp20', name: 'Réglette 20mm', shortName: '20mm' },
+  { id: 'crimp15', name: 'Réglette 15mm', shortName: '15mm' },
+  { id: 'crimp10', name: 'Réglette 10mm', shortName: '10mm' },
+  { id: 'crimp5', name: 'Réglette 5mm', shortName: '5mm' },
+  { id: 'round', name: 'Prise ronde', shortName: 'Ronde' },
+];
+
+export function getHoldById(id: HoldType): HoldInfo | undefined {
+  return HOLDS.find(h => h.id === id);
+}
+
+export const ANGLES = [0, 5, 10, 15, 20, 25, 30] as const;
+export type AngleDeg = (typeof ANGLES)[number];
+
+export function formatGripConfig(gc: GripConfig): string {
+  const grip = getGripById(gc.grip);
+  const hold = getHoldById(gc.hold);
+  const parts = [grip?.name, hold?.name];
+  if (gc.angleDeg > 0) parts.push(`${gc.angleDeg}°`);
+  if (gc.loadKg > 0) parts.push(`+${gc.loadKg}kg`);
+  if (gc.loadKg < 0) parts.push(`${gc.loadKg}kg`);
+  return parts.filter(Boolean).join(' · ');
+}
 
 export const MAX_GRIPS_PER_SESSION = 3;

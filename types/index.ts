@@ -1,6 +1,17 @@
 export type ProtocolFamily = 'force' | 'continuity' | 'pullups';
 export type EnergySystem = 'alactic' | 'lactic' | 'aerobic';
-export type GripType = 'open3' | 'open4' | 'halfCrimp' | 'fullCrimp' | 'fullCrimpThumb' | 'climbingHolds' | 'normalHands';
+export type GripType = 'open1' | 'open2' | 'open3' | 'open4' | 'halfCrimp' | 'fullCrimp' | 'fullCrimpThumb' | 'climbingHolds' | 'normalHands';
+export type HoldType = 'flat' | 'crimp20' | 'crimp15' | 'crimp10' | 'crimp5' | 'round';
+
+export type GripConfig = {
+  grip: GripType;
+  hold: HoldType;
+  loadKg: number;
+  angleDeg: number;
+};
+
+export type GripMode = 'session' | 'perSet';
+
 export type TimerPhase = 'idle' | 'prep' | 'hang' | 'restRep' | 'restSet' | 'restRound' | 'done';
 export type Difficulty = 'beginner' | 'intermediate' | 'advanced';
 
@@ -13,8 +24,24 @@ export type TimerConfig = {
   restBetweenSets: number;
   rounds?: number;
   restBetweenRounds?: number;
-  loadKg?: number;
   phaseColors?: Record<string, string>;
+};
+
+export type UsageGuideSection = {
+  title: string;
+  content: string;
+};
+
+export type InfoNotes = {
+  sets?: string;
+  restBetweenSets?: string;
+  hangDuration?: string;
+};
+
+export type GripRecommendation = {
+  mode: GripMode;
+  description: string;
+  defaultGrips?: GripType[];
 };
 
 export type Protocol = {
@@ -32,6 +59,8 @@ export type Protocol = {
   loadAdvice: string;
   recoveryAdvice: string;
   frequencyAdvice: string;
+  usageGuide?: UsageGuideSection[];
+  gripRecommendation?: GripRecommendation;
 };
 
 export type GripInfo = {
@@ -45,13 +74,15 @@ export type GripInfo = {
 
 export type SessionConfig = {
   protocol: Protocol;
-  grips: GripType[];
+  gripMode: GripMode;
+  gripConfigs: GripConfig[];
   timerConfig: TimerConfig;
 };
 
 export type SessionResult = {
   protocol: Protocol;
-  grips: GripType[];
+  gripMode: GripMode;
+  gripConfigs: GripConfig[];
   config: TimerConfig;
   completedSets: number;
   completedRounds: number;
@@ -71,8 +102,8 @@ export type SessionHistoryEntry = {
 // --- Custom Workouts ---
 
 export type WorkoutStep =
-  | { type: 'protocol'; protocolId: string; config: TimerConfig; grips: GripType[] }
-  | { type: 'free'; name: string; config: TimerConfig };
+  | { type: 'protocol'; protocolId: string; config: TimerConfig; gripMode: GripMode; gripConfigs: GripConfig[] }
+  | { type: 'free'; name: string; config: TimerConfig; gripMode: GripMode; gripConfigs: GripConfig[] };
 
 export type CustomWorkout = {
   id: string;
@@ -84,43 +115,78 @@ export type CustomWorkout = {
 
 // --- Climbing Log ---
 
-export type ClimbingType = 'bloc' | 'voie' | 'renfo';
-export type EffortType = 'aerobic' | 'force' | 'resistance' | 'power' | 'technique';
+export type ClimbingType = 'bloc' | 'voie';
+export type VoieMode = 'libre' | 'continuity-long' | 'continuity-short';
+export type EffortIntensity = 'easy' | 'correct' | 'hard';
 export type DifficultyLevel = 'easy' | 'medium' | 'hard' | 'max';
+export type BoulderColor = 'yellow' | 'green' | 'blue' | 'pink' | 'red' | 'black' | 'violet';
+
+export type ClimbEntry = {
+  id: string;
+  name?: string;
+  grade?: string;
+  color?: BoulderColor;
+  success?: boolean;
+  attempts?: number;
+};
+
+export type RoundRoute = {
+  id: string;
+  grade?: string;
+  name?: string;
+  passages: number;
+  success?: boolean;
+};
+
+export type RoundDetail = {
+  roundNumber: number;
+  routes: RoundRoute[];
+};
 
 export type ClimbingSession = {
   id: string;
   date: string;
   type: ClimbingType;
-  effortType: EffortType;
-  difficulty: DifficultyLevel;
-  // Optional details
+  voieMode?: VoieMode;
+  difficulty?: DifficultyLevel;
+  location?: string;
+  // Global details (exclusive with entries)
   routeCount?: number;
   grades?: string;
   duration?: number; // minutes
   notes?: string;
+  // Route-by-route details (exclusive with global)
+  entries?: ClimbEntry[];
+  // Continuity-long fields
+  rounds?: number;
+  effortPerRound?: number; // minutes
+  restBetweenRounds?: number; // minutes
+  intensity?: EffortIntensity;
+  // Continuity-short fields
+  setsPerRound?: number;
+  effortPerSet?: number; // seconds
+  restBetweenSets?: number; // minutes
+  fellFromRound?: number;
+  roundDetails?: RoundDetail[];
 };
 
 // Training Plans
-export type PlanSessionType =
-  | 'hangboard-force'
-  | 'hangboard-endurance'
-  | 'hangboard-pullups'
-  | 'bouldering'
-  | 'route'
-  | 'strength'
-  | 'rest'
-  | 'active-recovery';
+export type SessionMode = 'climbing' | 'climbing-exercise' | 'exercise';
+export type ExerciseTiming = 'before' | 'after';
+export type ClimbingActivity = 'bouldering' | 'route';
 
 export type PlanGoal = 'force' | 'endurance' | 'mixed' | 'beginner';
 
 export type PlannedSession = {
   id: string;
-  type: PlanSessionType;
+  mode: SessionMode;
   label: string;
   description: string;
-  protocolIds?: string[];
   order: number;
+  climbingActivity?: ClimbingActivity;
+  protocolIds?: string[];
+  exerciseTiming?: ExerciseTiming;
+  restAfterHours?: number;
 };
 
 export type TrainingPlanTemplate = {
@@ -140,6 +206,7 @@ export type SessionCompletion = {
   skipped: boolean;
   completedAt?: string;
   durationMinutes?: number;
+  progress?: number; // 0=not started, 1=partial (climbing-exercise), 2=done
 };
 
 export type WeekHistory = {
@@ -154,4 +221,30 @@ export type ActivePlan = {
   currentWeek: number;
   startDate: string;
   weekHistory: WeekHistory[];
+};
+
+// --- Journal ---
+
+export type JournalFilter = 'all' | 'hangboard' | 'bloc' | 'voie';
+
+export type JournalEntry =
+  | { type: 'hangboard'; data: SessionHistoryEntry }
+  | { type: 'climbing'; data: ClimbingSession };
+
+export type GroupedJournalDay = {
+  dateKey: string; // YYYY-MM-DD
+  label: string;   // "Lundi 10 mars"
+  entries: JournalEntry[];
+};
+
+export type JournalStats = {
+  sessionsThisWeek: number;
+  sessionsLastWeek: number;
+  weekTrend: number;
+  hangboardThisMonth: number;
+  blocThisMonth: number;
+  voieThisMonth: number;
+  totalHangTimeWeek: number;
+  successRate: number;
+  averageGrade: string | null;
 };
