@@ -1,26 +1,27 @@
-import React, { useEffect, useRef, useCallback, useMemo } from 'react';
-import { View, Text, Pressable, AppState, Alert } from 'react-native';
+import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react';
+import { View, Text, Pressable, AppState, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useKeepAwake } from 'expo-keep-awake';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useColorScheme } from 'nativewind';
 import { useThemeColors } from '@/lib/theme';
 import { useTimerStore } from '@/stores/timer-store';
 import { PHASE_COLORS, PHASE_LABELS } from '@/constants/colors';
-import { getGripById } from '@/constants/grips';
+import { getGripById, getHoldById } from '@/constants/grips';
 import { playCountdown, playStart, playEnd } from '@/lib/sounds';
 import {
-  startBackgroundKeepAlive,
-  stopBackgroundKeepAlive,
-  showTimerNotification,
-  dismissTimerNotification,
+  startBackgroundTimer,
+  updateBackgroundNotification,
+  stopBackgroundTimer,
 } from '@/lib/background-timer';
 import { TimerPhase } from '@/types';
 
 function formatTime(seconds: number): string {
-  const min = Math.floor(seconds / 60);
-  const sec = seconds % 60;
+  const s = Math.max(0, Math.round(seconds));
+  const min = Math.floor(s / 60);
+  const sec = s % 60;
   if (min === 0) return String(sec);
   return `${min}:${String(sec).padStart(2, '0')}`;
 }
@@ -37,8 +38,8 @@ const NOTIF_PHASE_NAMES: Record<TimerPhase, string> = {
 
 const TimeDisplay = React.memo(({ timeRemaining }: { timeRemaining: number }) => (
   <Text
-    className="text-stone-900 dark:text-stone-50 text-8xl font-bold mb-4"
-    style={{ fontVariant: ['tabular-nums'] }}
+    className="text-stone-900 dark:text-stone-50 mb-4"
+    style={{ fontSize: 140, fontVariant: ['tabular-nums'], fontWeight: '900' }}
     accessibilityRole="timer"
     accessibilityLiveRegion="assertive"
     accessibilityLabel={`${formatTime(timeRemaining)} restantes`}
@@ -63,15 +64,15 @@ const ProgressInfo = React.memo(({ rep, set, totalSets, round, totalRounds, reps
     accessibilityLabel={`Répétition ${rep}, Série ${set} sur ${totalSets}${totalRounds > 1 ? `, Tour ${round} sur ${totalRounds}` : ''}`}
   >
     <View className="items-center">
-      <Text className="text-stone-400 dark:text-stone-500 text-xs font-semibold uppercase tracking-wide">Rep</Text>
-      <Text className="text-stone-900 dark:text-stone-50 text-xl font-bold">
+      <Text className="text-stone-400 dark:text-stone-500 text-sm font-semibold uppercase tracking-wide">Rep</Text>
+      <Text className="text-stone-900 dark:text-stone-50 text-2xl font-bold">
         {rep}/{reps}
       </Text>
     </View>
     <View className="w-px bg-stone-700/50 self-stretch" />
     <View className="items-center">
-      <Text className="text-stone-400 dark:text-stone-500 text-xs font-semibold uppercase tracking-wide">Serie</Text>
-      <Text className="text-stone-900 dark:text-stone-50 text-xl font-bold">
+      <Text className="text-stone-400 dark:text-stone-500 text-sm font-semibold uppercase tracking-wide">Serie</Text>
+      <Text className="text-stone-900 dark:text-stone-50 text-2xl font-bold">
         {set}/{totalSets}
       </Text>
     </View>
@@ -79,8 +80,8 @@ const ProgressInfo = React.memo(({ rep, set, totalSets, round, totalRounds, reps
       <>
         <View className="w-px bg-stone-700/50 self-stretch" />
         <View className="items-center">
-          <Text className="text-stone-400 dark:text-stone-500 text-xs font-semibold uppercase tracking-wide">Tour</Text>
-          <Text className="text-stone-900 dark:text-stone-50 text-xl font-bold">
+          <Text className="text-stone-400 dark:text-stone-500 text-sm font-semibold uppercase tracking-wide">Tour</Text>
+          <Text className="text-stone-900 dark:text-stone-50 text-2xl font-bold">
             {round}/{totalRounds}
           </Text>
         </View>
@@ -89,9 +90,15 @@ const ProgressInfo = React.memo(({ rep, set, totalSets, round, totalRounds, reps
   </View>
 ));
 
+interface GripDetailInfo {
+  gripName: string;
+  holdAndDetails: string;
+}
+
 export default function TimerScreen() {
   useKeepAwake();
   const router = useRouter();
+  const [showStopModal, setShowStopModal] = useState(false);
   const insets = useSafeAreaInsets();
   const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevPhaseRef = useRef<number>(-1);
@@ -103,7 +110,8 @@ export default function TimerScreen() {
   const isRunning = useTimerStore(s => s.isRunning);
   const isPaused = useTimerStore(s => s.isPaused);
   const protocol = useTimerStore(s => s.protocol);
-  const grips = useTimerStore(s => s.grips);
+  const gripMode = useTimerStore(s => s.gripMode);
+  const gripConfigs = useTimerStore(s => s.gripConfigs);
   const config = useTimerStore(s => s.config);
   const start = useTimerStore(s => s.start);
   const pauseTimer = useTimerStore(s => s.pause);
@@ -119,6 +127,8 @@ export default function TimerScreen() {
   const prog = useMemo(() => progressFn(), [progressFn, currentPhaseIndex, phases]);
 
   const colors = useThemeColors();
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === 'dark';
   const isDone = currentPhaseIndex >= phases.length;
   const phaseColor = phase
     ? (config?.phaseColors?.[phase.type] ?? PHASE_COLORS[phase.type])
@@ -152,26 +162,38 @@ export default function TimerScreen() {
     }
   }, [currentPhaseIndex, timeRemaining, phase]);
 
+  const startTicking = useCallback(() => {
+    if (intervalRef.current) {
+      clearTimeout(intervalRef.current);
+      intervalRef.current = null;
+    }
+    let expectedTime = Date.now() + 1000;
+    const scheduleTick = () => {
+      if (intervalRef.current === null) return;
+      const now = Date.now();
+      const drift = now - expectedTime;
+      expectedTime += 1000;
+      tick();
+      const nextDelay = Math.max(0, 1000 - drift);
+      intervalRef.current = setTimeout(scheduleTick, nextDelay);
+    };
+    intervalRef.current = setTimeout(scheduleTick, 1000);
+  }, [tick]);
+
+  const stopTicking = useCallback(() => {
+    if (intervalRef.current) {
+      clearTimeout(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }, []);
+
   useEffect(() => {
     if (isRunning && !isPaused) {
-      let expectedTime = Date.now() + 1000;
-
-      const scheduleTick = () => {
-        const now = Date.now();
-        const drift = now - expectedTime;
-        expectedTime += 1000;
-        tick();
-        const nextDelay = Math.max(0, 1000 - drift);
-        intervalRef.current = setTimeout(scheduleTick, nextDelay);
-      };
-
-      intervalRef.current = setTimeout(scheduleTick, 1000);
-    } else if (intervalRef.current) {
-      clearTimeout(intervalRef.current);
+      startTicking();
+    } else {
+      stopTicking();
     }
-    return () => {
-      if (intervalRef.current) clearTimeout(intervalRef.current);
-    };
+    return () => stopTicking();
   }, [isRunning, isPaused]);
 
   useEffect(() => {
@@ -181,30 +203,28 @@ export default function TimerScreen() {
   }, []);
 
   useEffect(() => {
-    if (isRunning) {
-      startBackgroundKeepAlive();
+    if (isRunning && phase) {
+      startBackgroundTimer(
+        NOTIF_PHASE_NAMES[phase.type],
+        timeRemaining,
+        phaseColor,
+        () => { isPaused ? resume() : pauseTimer(); }
+      );
     }
     return () => {
-      stopBackgroundKeepAlive();
-      dismissTimerNotification();
+      stopBackgroundTimer();
     };
   }, [isRunning]);
 
   useEffect(() => {
     if (!isRunning || !phase) return;
-
-    const phaseName = isPaused
-      ? `En pause — ${NOTIF_PHASE_NAMES[phase.type]}`
-      : NOTIF_PHASE_NAMES[phase.type];
-
-    const parts: string[] = [];
-    if (prog.set > 0) parts.push(`Série ${prog.set}/${prog.totalSets}`);
-    if (prog.rep > 0) parts.push(`Rép ${prog.rep}/${config?.reps ?? 0}`);
-    if (prog.totalRounds > 1) parts.push(`Tour ${prog.round}/${prog.totalRounds}`);
-    const detail = parts.join(' · ');
-
-    showTimerNotification(phaseName, phase.duration, detail);
-  }, [isRunning, isPaused, currentPhaseIndex]);
+    updateBackgroundNotification(
+      NOTIF_PHASE_NAMES[phase.type],
+      timeRemaining,
+      phaseColor,
+      isPaused
+    );
+  }, [isRunning, isPaused, currentPhaseIndex, timeRemaining]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState) => {
@@ -215,11 +235,12 @@ export default function TimerScreen() {
         backgroundTimestampRef.current = null;
         if (elapsed > 2) {
           fastForward(elapsed);
+          startTicking();
         }
       }
     });
     return () => subscription.remove();
-  }, [fastForward]);
+  }, [fastForward, startTicking]);
 
   useEffect(() => {
     if (isDone && !isRunning) {
@@ -228,24 +249,31 @@ export default function TimerScreen() {
   }, [isDone, isRunning]);
 
   const handleStop = useCallback(() => {
-    Alert.alert(
-      'Arrêter la séance ?',
-      'La progression sera sauvegardée.',
-      [
-        { text: 'Continuer', style: 'cancel' },
-        {
-          text: 'Arrêter',
-          style: 'destructive',
-          onPress: () => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            dismissTimerNotification();
-            stopBackgroundKeepAlive();
-            stopTimer();
-          },
-        },
-      ]
-    );
-  }, [stopTimer]);
+    pauseTimer();
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setShowStopModal(true);
+  }, [pauseTimer]);
+
+  const handleStopCancel = useCallback(() => {
+    setShowStopModal(false);
+    resume();
+  }, [resume]);
+
+  const handleStopSave = useCallback(() => {
+    setShowStopModal(false);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    stopBackgroundTimer();
+    stopTimer();
+    router.replace('/recap');
+  }, [stopTimer, router]);
+
+  const handleStopAbandon = useCallback(() => {
+    setShowStopModal(false);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    stopBackgroundTimer();
+    stopTimer();
+    router.replace('/');
+  }, [stopTimer, router]);
 
   const handlePauseResume = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -257,29 +285,68 @@ export default function TimerScreen() {
     skipPhase();
   }, [skipPhase]);
 
-  const gripReminder =
-    (phase?.type === 'restSet' || phase?.type === 'restRound') && grips.length > 0
-      ? grips.map((g) => getGripById(g)?.name).join(', ')
-      : null;
+  const gripDetailInfo = useMemo((): GripDetailInfo | null => {
+    if (!phase || gripConfigs.length === 0) return null;
+    const isHang = phase.type === 'hang';
+    const isRest = phase.type === 'restRep' || phase.type === 'restSet' || phase.type === 'restRound';
+    const isPrep = phase.type === 'prep';
+    if (!isHang && !isRest && !isPrep) return null;
 
-  const isRestPhase =
-    phase &&
+    let gcIndex = 0;
+    if (gripMode === 'perSet') {
+      if (isHang) {
+        gcIndex = ((phase.set ?? 1) - 1) % gripConfigs.length;
+      } else if (isPrep) {
+        gcIndex = 0;
+      } else {
+        gcIndex = (phase.set ?? 1) % gripConfigs.length;
+      }
+    }
+
+    const gc = gripConfigs[gcIndex];
+    if (!gc) return null;
+
+    const grip = getGripById(gc.grip);
+    const hold = getHoldById(gc.hold);
+    const gripName = grip?.name ?? '';
+
+    const detailParts: string[] = [];
+    if (hold?.name) detailParts.push(hold.name);
+    if (gc.angleDeg > 0) detailParts.push(`${gc.angleDeg}°`);
+    if (gc.loadKg !== 0) detailParts.push(gc.loadKg > 0 ? `+${gc.loadKg}kg` : `${gc.loadKg}kg`);
+
+    return { gripName, holdAndDetails: detailParts.join(' · ') };
+  }, [phase, gripMode, gripConfigs]);
+
+  const nextHangDuration = useMemo((): number | null => {
+    if (!phase) return null;
+    const isRest = phase.type === 'restRep' || phase.type === 'restSet' || phase.type === 'restRound';
+    if (!isRest) return null;
+    const nextPhase = phases[currentPhaseIndex + 1];
+    if (!nextPhase || nextPhase.type !== 'hang') return null;
+    return nextPhase.duration;
+  }, [phase, phases, currentPhaseIndex]);
+
+  const isRestPhase = phase &&
     phase.type !== 'hang' &&
     phase.type !== 'prep' &&
     phase.type !== 'done';
+
+  const showSkipButton = phase &&
+    (phase.type === 'prep' || isRestPhase);
 
   return (
     <View className="flex-1 justify-between" style={{ backgroundColor: colors.bg }}>
       {/* Ambient color overlay */}
       <View
         className="absolute inset-0"
-        style={{ backgroundColor: phaseColor, opacity: 0.12 }}
+        style={{ backgroundColor: phaseColor, opacity: isDark ? 0.20 : 0.30 }}
       />
 
       {/* Global progress bar */}
-      <View className="w-full h-1.5 bg-stone-100 dark:bg-stone-800">
+      <View className="w-full h-2.5 bg-stone-100 dark:bg-stone-800 overflow-hidden rounded-full">
         <View
-          className="h-full rounded-r-full"
+          className="h-full rounded-full"
           style={{
             width: `${Math.min(globalProgress * 100, 100)}%`,
             backgroundColor: phaseColor,
@@ -296,7 +363,7 @@ export default function TimerScreen() {
         >
           <Text
             style={{ color: phaseColor }}
-            className="text-lg font-bold tracking-wide"
+            className="text-2xl font-black tracking-widest"
             accessibilityRole="header"
             accessibilityLiveRegion="polite"
             accessibilityLabel={`Phase : ${phaseLabel}`}
@@ -308,22 +375,48 @@ export default function TimerScreen() {
         {/* Timer */}
         <TimeDisplay timeRemaining={timeRemaining} />
 
-        {/* Skip button — visible during rest phases only */}
-        {isRestPhase && (
+        {/* Skip button — visible during prep and rest phases */}
+        {showSkipButton && (
           <Pressable
             onPress={handleSkip}
-            className="mt-0 mb-6 px-6 py-2 rounded-full bg-stone-200/50 dark:bg-stone-700/50"
+            className="w-full mb-6 py-4 rounded-2xl bg-stone-200 dark:bg-stone-700 items-center"
             style={({ pressed }) => [{ transform: [{ scale: pressed ? 0.95 : 1 }] }]}
             accessibilityRole="button"
             accessibilityLabel="Passer à la phase suivante"
           >
-            <Text className="text-stone-500 dark:text-stone-400 text-sm font-medium">
+            <Text className="text-stone-600 dark:text-stone-300 text-lg font-bold">
               Passer ›
             </Text>
           </Pressable>
         )}
 
-        {!isRestPhase && <View className="mb-6" />}
+        {!showSkipButton && <View className="mb-6" />}
+
+        {/* Grip info in large text — during prep, hang and rest */}
+        {gripDetailInfo && (
+          <View className="items-center mb-4 w-full">
+            <Text
+              className="text-stone-900 dark:text-stone-50 text-4xl font-black text-center mb-1"
+              numberOfLines={2}
+            >
+              {gripDetailInfo.gripName}
+            </Text>
+            {gripDetailInfo.holdAndDetails.length > 0 && (
+              <Text className="text-stone-500 dark:text-stone-400 text-xl text-center">
+                {gripDetailInfo.holdAndDetails}
+              </Text>
+            )}
+          </View>
+        )}
+
+        {/* Next hang duration during rest */}
+        {nextHangDuration !== null && (
+          <View className="items-center mb-4">
+            <Text className="text-stone-400 dark:text-stone-500 text-xl">
+              Accroche · {formatTime(nextHangDuration)}
+            </Text>
+          </View>
+        )}
 
         {/* Progress info */}
         <ProgressInfo
@@ -334,17 +427,6 @@ export default function TimerScreen() {
           totalRounds={prog.totalRounds}
           reps={config?.reps ?? 0}
         />
-
-        {/* Grip reminder */}
-        {gripReminder && (
-          <View className="bg-stone-100 dark:bg-stone-800/80 border border-stone-300 dark:border-stone-700/50 rounded-3xl p-4 mb-6 w-full">
-            <View className="flex-row items-center mb-1">
-              <Ionicons name="hand-left-outline" size={16} color="#F97316" style={{ marginRight: 8 }} />
-              <Text className="text-stone-900 dark:text-stone-50 font-bold">Préhension suivante</Text>
-            </View>
-            <Text className="text-stone-700 dark:text-stone-200">{gripReminder}</Text>
-          </View>
-        )}
 
         {/* Load advice */}
         {(phase?.type === 'restSet' || phase?.type === 'restRound') && protocol && (
@@ -365,12 +447,12 @@ export default function TimerScreen() {
       >
         <Pressable
           onPress={handlePauseResume}
-          className="w-full py-5 rounded-2xl items-center bg-stone-800 dark:bg-stone-200"
+          className={`w-full py-5 rounded-2xl items-center ${isPaused ? 'bg-orange-500' : 'bg-stone-800 dark:bg-stone-200'}`}
           style={({ pressed }) => [{ transform: [{ scale: pressed ? 0.97 : 1 }] }]}
           accessibilityRole="button"
           accessibilityLabel={isPaused ? 'Reprendre la séance' : 'Mettre en pause'}
         >
-          <Text className="text-white dark:text-stone-900 text-lg font-bold">
+          <Text className={`text-lg font-bold ${isPaused ? 'text-white' : 'text-white dark:text-stone-900'}`}>
             {isPaused ? 'Reprendre' : 'Pause'}
           </Text>
         </Pressable>
@@ -386,6 +468,54 @@ export default function TimerScreen() {
           </Text>
         </Pressable>
       </View>
+
+      <Modal visible={showStopModal} transparent animationType="fade" statusBarTranslucent>
+        <Pressable
+          className="flex-1 bg-black/50 items-center justify-center px-6"
+          onPress={handleStopCancel}
+        >
+          <Pressable
+            className="bg-white dark:bg-stone-900 rounded-3xl p-6 w-full max-w-sm"
+            onPress={() => {}}
+          >
+            <Pressable
+              onPress={handleStopCancel}
+              className="absolute top-4 right-4 w-11 h-11 items-center justify-center"
+              accessibilityRole="button"
+              accessibilityLabel="Continuer la séance"
+            >
+              <Ionicons name="close" size={24} color={colors.textSecondary} />
+            </Pressable>
+
+            <Text className="text-stone-900 dark:text-stone-50 text-xl font-bold mb-2 pr-10">
+              Arrêter la séance ?
+            </Text>
+            <Text className="text-stone-500 dark:text-stone-400 text-sm mb-6">
+              Vous pouvez sauvegarder votre progression ou abandonner complètement.
+            </Text>
+
+            <Pressable
+              onPress={handleStopSave}
+              className="bg-orange-500 rounded-2xl py-4 items-center mb-3"
+              style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}
+              accessibilityRole="button"
+              accessibilityLabel="Sauvegarder la séance"
+            >
+              <Text className="text-white text-base font-bold">Sauvegarder</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={handleStopAbandon}
+              className="rounded-2xl py-4 items-center"
+              style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}
+              accessibilityRole="button"
+              accessibilityLabel="Abandonner la séance"
+            >
+              <Text className="text-red-500 text-base font-semibold">Abandonner</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }

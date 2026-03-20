@@ -1,69 +1,81 @@
-import { Text, View, Pressable } from 'react-native';
-import { useRef, useCallback, useState } from 'react';
+import { Text, View, Pressable, ScrollView, findNodeHandle } from 'react-native';
+import { useRef, useCallback, useState, useEffect } from 'react';
+import Animated, { FadeInDown, FadeOutUp } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
-import { TimerConfig, TimerPhase } from '@/types';
+import { TimerConfig, TimerPhase, InfoNotes } from '@/types';
 import { PHASE_COLORS } from '@/constants/colors';
 import { COLOR_PALETTE } from '@/constants/colors';
 import { useThemeColors } from '@/lib/theme';
+import { InfoButton } from '@/components/InfoButton';
+
+export type { InfoNotes };
 
 type Props = {
   config: TimerConfig;
   onChange: (config: TimerConfig) => void;
+  infoNotes?: InfoNotes;
+  scrollViewRef?: React.RefObject<ScrollView | null>;
 };
 
 function RepeatButton({
   label,
   onStep,
+  disabled,
 }: {
   label: string;
   onStep: () => void;
+  disabled?: boolean;
 }) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const speedRef = useRef(300);
+  const onStepRef = useRef(onStep);
+  onStepRef.current = onStep;
 
   const startRepeat = useCallback(() => {
+    if (disabled) return;
     Haptics.selectionAsync();
-    onStep();
+    onStepRef.current();
     speedRef.current = 300;
 
     const tick = () => {
-      onStep();
+      onStepRef.current();
       speedRef.current = Math.max(50, speedRef.current * 0.85);
       timerRef.current = setTimeout(tick, speedRef.current);
     };
 
     timerRef.current = setTimeout(tick, 400);
-  }, [onStep]);
+  }, [disabled]);
 
   const stopRepeat = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
-    if (intervalRef.current) clearInterval(intervalRef.current);
     timerRef.current = null;
-    intervalRef.current = null;
   }, []);
 
   return (
     <Pressable
-      className="bg-stone-200 dark:bg-stone-700 rounded-lg w-12 h-12 items-center justify-center active:bg-stone-300 dark:active:bg-stone-600"
+      className="bg-stone-200 dark:bg-stone-700 rounded-xl w-11 h-11 items-center justify-center active:bg-stone-300 dark:active:bg-stone-600"
+      style={disabled ? { opacity: 0.4 } : undefined}
       onPressIn={startRepeat}
       onPressOut={stopRepeat}
       accessibilityRole="button"
       accessibilityLabel={label === '−' ? 'Réduire la durée' : 'Augmenter la durée'}
+      accessibilityState={{ disabled: !!disabled }}
     >
-      <Text className="text-stone-900 dark:text-stone-50 font-bold text-lg">{label}</Text>
+      <Text className="text-stone-900 dark:text-stone-50 font-bold text-base">{label}</Text>
     </Pressable>
   );
 }
 
-function StepButton({ label, onPress }: { label: string; onPress: () => void }) {
+function StepButton({ label, onPress, disabled }: { label: string; onPress: () => void; disabled?: boolean }) {
   return (
     <Pressable
-      className="bg-stone-200 dark:bg-stone-700 rounded-lg w-11 h-11 items-center justify-center active:bg-stone-300 dark:active:bg-stone-600"
-      onPress={onPress}
+      className="bg-stone-200 dark:bg-stone-700 rounded-xl w-11 h-11 items-center justify-center active:bg-stone-300 dark:active:bg-stone-600"
+      style={disabled ? { opacity: 0.4 } : undefined}
+      onPress={disabled ? undefined : onPress}
       accessibilityRole="button"
       accessibilityLabel={label.startsWith('-') ? `Réduire de ${label.slice(1)}` : `Augmenter de ${label.slice(1)}`}
+      accessibilityState={{ disabled: !!disabled }}
     >
       <Text className="text-stone-900 dark:text-stone-50 font-bold text-sm">{label}</Text>
     </Pressable>
@@ -90,6 +102,11 @@ function ColorPicker({
             current === color && {
               borderWidth: 2,
               borderColor: colors.text,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.3,
+              shadowRadius: 2,
+              elevation: 3,
             },
           ]}
           accessibilityRole="button"
@@ -97,7 +114,7 @@ function ColorPicker({
           accessibilityState={{ selected: current === color }}
         >
           {current === color && (
-            <Text className="text-white text-xs font-bold">✓</Text>
+            <Ionicons name="checkmark" size={18} color="#fff" />
           )}
         </Pressable>
       ))}
@@ -112,30 +129,80 @@ function formatSeconds(s: number): string {
   return sec > 0 ? `${min}m${sec.toString().padStart(2, '0')}s` : `${min}m`;
 }
 
+function adaptiveStep(value: number): number {
+  if (value > 120) return 10;
+  if (value > 60) return 5;
+  return 1;
+}
+
 type DurationField = {
   key: keyof TimerConfig;
   phase: TimerPhase;
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
+  infoKey?: keyof InfoNotes;
 };
 
 const DURATION_CARDS: DurationField[] = [
-  { key: 'prepDuration', phase: 'prep', label: 'Preparation', icon: 'hourglass-outline' },
-  { key: 'hangDuration', phase: 'hang', label: 'Suspension', icon: 'hand-left-outline' },
-  { key: 'restBetweenReps', phase: 'restRep', label: 'Repos repetition', icon: 'flash-outline' },
-  { key: 'restBetweenSets', phase: 'restSet', label: 'Repos serie', icon: 'pause-outline' },
+  { key: 'prepDuration', phase: 'prep', label: 'Préparation', icon: 'hourglass-outline' },
+  { key: 'hangDuration', phase: 'hang', label: 'Suspension', icon: 'hand-left-outline', infoKey: 'hangDuration' },
+  { key: 'restBetweenReps', phase: 'restRep', label: 'Repos répétition', icon: 'flash-outline' },
+  { key: 'restBetweenSets', phase: 'restSet', label: 'Repos série', icon: 'pause-outline', infoKey: 'restBetweenSets' },
   { key: 'restBetweenRounds', phase: 'restRound', label: 'Repos tour', icon: 'bed-outline' },
 ];
 
-const VOLUME_FIELDS = [
-  { key: 'reps' as keyof TimerConfig, label: 'Repetitions par serie' },
-  { key: 'sets' as keyof TimerConfig, label: 'Nombre de series' },
-  { key: 'rounds' as keyof TimerConfig, label: 'Nombre de tours' },
+type VolumeField = {
+  key: keyof TimerConfig;
+  label: string;
+  infoKey?: keyof InfoNotes;
+};
+
+const VOLUME_FIELDS: VolumeField[] = [
+  { key: 'reps', label: 'Répétitions par série' },
+  { key: 'sets', label: 'Nombre de séries', infoKey: 'sets' },
+  { key: 'rounds', label: 'Nombre de tours' },
 ];
 
-export function TimerConfigForm({ config, onChange }: Props) {
+export function TimerConfigForm({ config, onChange, infoNotes, scrollViewRef }: Props) {
   const [expandedColor, setExpandedColor] = useState<string | null>(null);
+  const [mountedPicker, setMountedPicker] = useState(false);
+  const colorPickerRef = useRef<View>(null);
+  const lastExpandedColor = useRef<string | null>(null);
   const colors = useThemeColors();
+
+  useEffect(() => {
+    if (expandedColor) {
+      lastExpandedColor.current = expandedColor;
+    }
+  }, [expandedColor]);
+
+  useEffect(() => {
+    if (expandedColor) {
+      setMountedPicker(true);
+    } else {
+      const timer = setTimeout(() => setMountedPicker(false), 150);
+      return () => clearTimeout(timer);
+    }
+  }, [expandedColor]);
+
+  useEffect(() => {
+    if (!mountedPicker || !expandedColor || !scrollViewRef?.current || !colorPickerRef.current) return;
+
+    const scrollNode = findNodeHandle(scrollViewRef.current);
+    if (!scrollNode) return;
+
+    const timer = setTimeout(() => {
+      colorPickerRef.current?.measureLayout(
+        scrollNode,
+        (_x, y) => {
+          scrollViewRef.current?.scrollTo({ y: y - 60, animated: true });
+        },
+        () => {},
+      );
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [mountedPicker, expandedColor, scrollViewRef]);
 
   const adjust = (key: keyof TimerConfig, delta: number, min = 0) => {
     const current = (config[key] ?? 0) as number;
@@ -159,7 +226,7 @@ export function TimerConfigForm({ config, onChange }: Props) {
 
   return (
     <View className="mb-6">
-      <Text className="text-stone-900 dark:text-stone-50 text-lg font-bold mb-3">Parametres</Text>
+      <Text className="text-stone-900 dark:text-stone-50 text-lg font-bold mb-3">Paramètres</Text>
 
       {volumeVisible.length > 0 && (
         <View className="mb-4">
@@ -167,25 +234,33 @@ export function TimerConfigForm({ config, onChange }: Props) {
             Volume
           </Text>
           <View className="bg-stone-100 dark:bg-stone-800 rounded-3xl overflow-hidden border border-stone-300 dark:border-stone-700/50">
-            {volumeVisible.map((field, i) => (
-              <View
-                key={field.key}
-                className={`px-4 py-3 ${
-                  i < volumeVisible.length - 1 ? 'border-b border-stone-300 dark:border-stone-700/50' : ''
-                }`}
-              >
-                <Text className="text-stone-600 dark:text-stone-300 mb-2">{field.label}</Text>
-                <View className="flex-row items-center justify-center gap-2">
-                  <StepButton label="-2" onPress={() => adjust(field.key, -2, 1)} />
-                  <StepButton label="-1" onPress={() => adjust(field.key, -1, 1)} />
-                  <Text className="text-stone-900 dark:text-stone-50 text-xl font-bold w-12 text-center">
-                    {config[field.key] as number}
-                  </Text>
-                  <StepButton label="+1" onPress={() => adjust(field.key, 1, 1)} />
-                  <StepButton label="+2" onPress={() => adjust(field.key, 2, 1)} />
+            {volumeVisible.map((field, i) => {
+              const value = config[field.key] as number;
+              return (
+                <View
+                  key={field.key}
+                  className={`px-4 py-3 ${
+                    i < volumeVisible.length - 1 ? 'border-b border-stone-300 dark:border-stone-700/50' : ''
+                  }`}
+                >
+                  <View className="flex-row items-center gap-1.5 mb-2">
+                    <Text className="text-stone-600 dark:text-stone-300">{field.label}</Text>
+                    {field.infoKey && infoNotes?.[field.infoKey] && (
+                      <InfoButton info={infoNotes[field.infoKey]!} />
+                    )}
+                  </View>
+                  <View className="flex-row items-center justify-center gap-2">
+                    <StepButton label="-2" onPress={() => adjust(field.key, -2, 1)} disabled={value <= 2} />
+                    <StepButton label="-1" onPress={() => adjust(field.key, -1, 1)} disabled={value <= 1} />
+                    <Text className="text-stone-900 dark:text-stone-50 text-xl font-bold w-12 text-center">
+                      {value}
+                    </Text>
+                    <StepButton label="+1" onPress={() => adjust(field.key, 1, 1)} />
+                    <StepButton label="+2" onPress={() => adjust(field.key, 2, 1)} />
+                  </View>
                 </View>
-              </View>
-            ))}
+              );
+            })}
           </View>
         </View>
       )}
@@ -193,13 +268,14 @@ export function TimerConfigForm({ config, onChange }: Props) {
       {durationVisible.length > 0 && (
         <View className="mb-4">
           <Text className="text-stone-400 dark:text-stone-500 text-xs font-semibold uppercase tracking-wide mb-2">
-            Durees
+            Durées
           </Text>
           <View className="flex-row flex-wrap gap-3">
             {durationVisible.map((field) => {
               const color = getColor(field.phase);
               const value = (config[field.key] ?? 0) as number;
               const isColorOpen = expandedColor === field.key;
+              const step = adaptiveStep(value);
 
               return (
                 <View
@@ -211,74 +287,86 @@ export function TimerConfigForm({ config, onChange }: Props) {
                     minWidth: '45%',
                   }}
                 >
-                  <View className="flex-row items-center justify-between mb-2">
-                    <View className="flex-row items-center gap-1">
+                  <View className="flex-row items-center justify-between mb-2" style={{ height: 32 }}>
+                    <View className="flex-row items-center gap-1 flex-1 overflow-hidden">
                       <Ionicons name={field.icon} size={14} color={colors.textSecondary} />
-                      <Text className="text-stone-500 dark:text-stone-400 text-xs font-semibold">
+                      <Text className="text-stone-500 dark:text-stone-400 text-xs font-semibold" numberOfLines={1}>
                         {field.label}
                       </Text>
+                      {field.infoKey && infoNotes?.[field.infoKey] && (
+                        <InfoButton info={infoNotes[field.infoKey]!} />
+                      )}
                     </View>
                     <Pressable
-                      onPress={() =>
-                        setExpandedColor(isColorOpen ? null : field.key)
-                      }
-                      className="w-10 h-10 rounded-full"
+                      onPress={() => setExpandedColor(isColorOpen ? null : field.key)}
+                      className="w-8 h-8 rounded-full"
                       style={{ backgroundColor: color }}
                       accessibilityRole="button"
                       accessibilityLabel={`Choisir la couleur de ${field.label}`}
                       accessibilityState={{ selected: isColorOpen }}
-                    />
+                    >
+                      {!isColorOpen && (
+                        <View
+                          className="absolute -bottom-0.5 -right-0.5 bg-stone-200 dark:bg-stone-700 rounded-full w-4 h-4 items-center justify-center"
+                        >
+                          <Ionicons name="color-palette-outline" size={10} color={colors.textSecondary} />
+                        </View>
+                      )}
+                    </Pressable>
                   </View>
 
-                  <Text className="text-stone-900 dark:text-stone-50 text-2xl font-bold text-center mb-2">
-                    {formatSeconds(value)}
-                  </Text>
-
-                  <View className="flex-row items-center justify-center gap-3">
+                  <View className="flex-row items-center justify-between mt-1">
                     <RepeatButton
                       label="−"
-                      onStep={() => adjust(field.key, -1, 0)}
+                      onStep={() => adjust(field.key, -step, 0)}
+                      disabled={value <= 0}
                     />
+                    <Text
+                      className="text-stone-900 dark:text-stone-50 text-lg font-bold text-center flex-1"
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                    >
+                      {formatSeconds(value)}
+                    </Text>
                     <RepeatButton
                       label="+"
-                      onStep={() => adjust(field.key, 1, 0)}
+                      onStep={() => adjust(field.key, step, 0)}
                     />
                   </View>
 
-                  {isColorOpen && (
-                    <ColorPicker
-                      current={color}
-                      onSelect={(c) => {
-                        setColor(field.phase, c);
-                        setExpandedColor(null);
-                      }}
-                    />
-                  )}
                 </View>
               );
             })}
           </View>
+
+          {mountedPicker && (() => {
+            const activeColorKey = expandedColor ?? lastExpandedColor.current;
+            const activeField = activeColorKey ? durationVisible.find((f) => f.key === activeColorKey) : undefined;
+            if (!activeField) return null;
+            return (
+              <View ref={colorPickerRef}>
+                <Animated.View
+                  entering={FadeInDown.duration(250)}
+                  exiting={FadeOutUp.duration(150)}
+                  className="bg-stone-100 dark:bg-stone-800 rounded-2xl p-3 mt-2 border border-stone-300 dark:border-stone-700/50"
+                >
+                  <Text className="text-stone-500 dark:text-stone-400 text-xs font-semibold mb-2">
+                    Couleur — {activeField.label}
+                  </Text>
+                  <ColorPicker
+                    current={getColor(activeField.phase)}
+                    onSelect={(c) => {
+                      setColor(activeField.phase, c);
+                      setExpandedColor(null);
+                    }}
+                  />
+                </Animated.View>
+              </View>
+            );
+          })()}
         </View>
       )}
 
-      <View className="mb-4">
-        <Text className="text-stone-400 dark:text-stone-500 text-xs font-semibold uppercase tracking-wide mb-2">
-          Charge
-        </Text>
-        <View className="bg-stone-100 dark:bg-stone-800 rounded-3xl px-4 py-3 border border-stone-300 dark:border-stone-700/50">
-          <View className="flex-row items-center justify-center gap-2">
-            <StepButton label="-10" onPress={() => adjust('loadKg', -10, 0)} />
-            <StepButton label="-5" onPress={() => adjust('loadKg', -5, 0)} />
-            <StepButton label="-1" onPress={() => adjust('loadKg', -1, 0)} />
-            <Text className="text-stone-900 dark:text-stone-50 text-xl font-bold w-16 text-center">
-              {config.loadKg ?? 0} kg
-            </Text>
-            <StepButton label="+1" onPress={() => adjust('loadKg', 1, 0)} />
-            <StepButton label="+5" onPress={() => adjust('loadKg', 5, 0)} />
-            <StepButton label="+10" onPress={() => adjust('loadKg', 10, 0)} />
-          </View>
-        </View>
-      </View>
     </View>
   );
 }

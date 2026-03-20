@@ -1,8 +1,10 @@
 import { useCallback, useRef, useState } from 'react';
-import { View, Text, ScrollView, Pressable, Alert, Animated, PanResponder } from 'react-native';
+import { View, Text, ScrollView, Pressable, Alert, Animated, PanResponder, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { useThemeColors } from '@/lib/theme';
 import {
   loadActivePlan,
   completeSessionInPlan,
@@ -10,17 +12,12 @@ import {
   advanceWeek,
   clearActivePlan,
 } from '@/lib/storage';
-import { ActivePlan, PlannedSession, PlanSessionType } from '@/types';
+import { ActivePlan, PlannedSession, SessionCompletion, SessionMode } from '@/types';
 
-const SESSION_ICONS: Record<PlanSessionType, string> = {
-  'hangboard-force': '⚡',
-  'hangboard-endurance': '🌊',
-  'hangboard-pullups': '🏋️',
-  bouldering: '🧗',
-  route: '🏔️',
-  strength: '💪',
-  rest: '😴',
-  'active-recovery': '🧘',
+const SESSION_MODE_ICONS: Record<SessionMode, string> = {
+  climbing: '🧗',
+  'climbing-exercise': '🧗💪',
+  exercise: '💪',
 };
 
 const FRENCH_MONTHS = [
@@ -28,12 +25,12 @@ const FRENCH_MONTHS = [
   'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.',
 ];
 
-const RECOVERY_BADGES: Partial<Record<PlanSessionType, { emoji: string; text: string }>> = {
-  'hangboard-force': { emoji: '⚠️', text: '48h de repos après cette séance' },
-  'hangboard-endurance': { emoji: '💡', text: 'À faire après une séance de grimpe' },
-  rest: { emoji: '🔋', text: 'Repos nécessaire pour la récupération' },
-  strength: { emoji: '✅', text: 'Compatible avec toutes les séances' },
-};
+function getRecoveryBadge(session: PlannedSession): { emoji: string; text: string } | null {
+  if (session.restAfterHours) {
+    return { emoji: '⏱️', text: `${session.restAfterHours}h de repos après` };
+  }
+  return null;
+}
 
 const RECOVERY_TIPS = [
   '48h minimum entre 2 séances de force',
@@ -112,7 +109,14 @@ function WeekNavigator({
 
   return (
     <View className="flex-row items-center justify-between mb-4">
-      <Pressable onPress={onPrev} disabled={isFirst} className="p-2" style={{ opacity: isFirst ? 0.3 : 1 }}>
+      <Pressable
+        onPress={onPrev}
+        disabled={isFirst}
+        className="w-11 h-11 items-center justify-center"
+        style={{ opacity: isFirst ? 0.3 : 1 }}
+        accessibilityRole="button"
+        accessibilityLabel="Semaine précédente"
+      >
         <Ionicons name="chevron-back" size={24} color="#F97316" />
       </Pressable>
       <View className="items-center flex-1">
@@ -123,41 +127,66 @@ function WeekNavigator({
           <Text className="text-stone-500 dark:text-stone-400 text-xs">{weekDateRange}</Text>
         ) : null}
       </View>
-      <Pressable onPress={onNext} disabled={isLast} className="p-2" style={{ opacity: isLast ? 0.3 : 1 }}>
+      <Pressable
+        onPress={onNext}
+        disabled={isLast}
+        className="w-11 h-11 items-center justify-center"
+        style={{ opacity: isLast ? 0.3 : 1 }}
+        accessibilityRole="button"
+        accessibilityLabel="Semaine suivante"
+      >
         <Ionicons name="chevron-forward" size={24} color="#F97316" />
       </Pressable>
     </View>
   );
 }
 
+function sessionActivityLabel(session: PlannedSession): string | null {
+  if (!session.climbingActivity) return null;
+  return session.climbingActivity === 'bouldering' ? 'Bloc' : 'Voie';
+}
+
+function sessionTimingLabel(session: PlannedSession): string | null {
+  if (session.mode !== 'climbing-exercise' || !session.exerciseTiming) return null;
+  return session.exerciseTiming === 'before' ? 'Poutre avant la grimpe' : 'Poutre après la grimpe';
+}
+
 function SessionCard({
   session,
   dayNumber,
-  completed,
+  completion,
   onToggle,
+  onLaunch,
 }: {
   session: PlannedSession;
   dayNumber: number;
-  completed: boolean;
+  completion?: SessionCompletion;
   onToggle: () => void;
+  onLaunch: () => void;
 }) {
-  const badge = RECOVERY_BADGES[session.type];
+  const completed = completion?.completed ?? false;
+  const progress = completion?.progress ?? 0;
+  const isPartial = !completed && progress === 1;
+
+  const badge = getRecoveryBadge(session);
+  const activityLabel = sessionActivityLabel(session);
+  const timingLabel = sessionTimingLabel(session);
+
+  const cardStyle = completed
+    ? 'bg-green-500/10 border-green-500/30'
+    : isPartial
+      ? 'bg-orange-500/10 border-orange-500/30'
+      : 'bg-stone-100 dark:bg-stone-800 border-stone-300 dark:border-stone-700/50';
 
   return (
-    <View
-      className={`rounded-2xl p-4 mb-3 border ${
-        completed
-          ? 'bg-green-500/10 border-green-500/30'
-          : 'bg-stone-100 dark:bg-stone-800 border-stone-300 dark:border-stone-700/50'
-      }`}
-    >
+    <View className={`rounded-2xl p-4 mb-3 border ${cardStyle}`}>
       {/* Day label */}
       <Text className="text-stone-400 dark:text-stone-500 text-[10px] font-semibold uppercase tracking-wider mb-2">
         Jour {dayNumber}
       </Text>
 
       <View className="flex-row items-center">
-        <Text className="text-2xl mr-3">{SESSION_ICONS[session.type]}</Text>
+        <Text className="text-2xl mr-3">{SESSION_MODE_ICONS[session.mode]}</Text>
         <View className="flex-1">
           <Text className="text-stone-900 dark:text-stone-50 text-base font-bold">
             {session.label}
@@ -168,40 +197,69 @@ function SessionCard({
         </View>
       </View>
 
-      {/* Recovery badge */}
-      {badge && (
-        <View className="bg-stone-200/60 dark:bg-stone-700/40 rounded-lg px-3 py-1.5 mt-2 self-start">
-          <Text className="text-stone-600 dark:text-stone-400 text-xs">
-            {badge.emoji} {badge.text}
-          </Text>
-        </View>
-      )}
+      {/* Mode detail badges */}
+      <View className="flex-row flex-wrap gap-2 mt-2">
+        {activityLabel && (
+          <View className="bg-stone-200/60 dark:bg-stone-700/40 rounded-lg px-3 py-1 self-start">
+            <Text className="text-stone-600 dark:text-stone-400 text-xs">{activityLabel}</Text>
+          </View>
+        )}
+        {timingLabel && (
+          <View className="bg-stone-200/60 dark:bg-stone-700/40 rounded-lg px-3 py-1 self-start">
+            <Text className="text-stone-600 dark:text-stone-400 text-xs">{timingLabel}</Text>
+          </View>
+        )}
+        {badge && (
+          <View className="bg-stone-200/60 dark:bg-stone-700/40 rounded-lg px-3 py-1 self-start">
+            <Text className="text-stone-600 dark:text-stone-400 text-xs">
+              {badge.emoji} {badge.text}
+            </Text>
+          </View>
+        )}
+      </View>
 
       {/* Toggle button */}
       <View className="flex-row gap-2 mt-3">
+        {isPartial && (
+          <View className="bg-orange-500/15 rounded-full px-3 py-2 flex-row items-center gap-1.5">
+            <Ionicons name="time-outline" size={16} color="#F97316" />
+            <Text className="text-orange-500 text-sm font-semibold">1/2</Text>
+          </View>
+        )}
         <Pressable
           onPress={onToggle}
-          className={`flex-row items-center rounded-full px-4 py-2 gap-1.5 ${
-            completed
-              ? 'bg-red-500/15'
-              : 'bg-green-500/15'
+          className={`flex-row items-center rounded-full px-4 py-3 gap-1.5 ${
+            completed || isPartial ? 'bg-red-500/15' : 'bg-green-500/15'
           }`}
+          accessibilityRole="button"
+          accessibilityLabel={completed || isPartial ? 'Annuler la séance' : 'Valider la séance'}
         >
           <Ionicons
-            name={completed ? 'close' : 'checkmark'}
+            name={completed || isPartial ? 'close' : 'checkmark'}
             size={16}
-            color={completed ? '#EF4444' : '#22C55E'}
+            color={completed || isPartial ? '#EF4444' : '#22C55E'}
           />
           <Text
             className={`text-sm font-semibold ${
-              completed
+              completed || isPartial
                 ? 'text-red-500 dark:text-red-400'
                 : 'text-green-600 dark:text-green-400'
             }`}
           >
-            {completed ? 'Annuler' : 'Valider'}
+            {completed || isPartial ? 'Annuler' : 'Valider'}
           </Text>
         </Pressable>
+        {!completed && (
+          <Pressable
+            onPress={onLaunch}
+            className="flex-row items-center rounded-full px-4 py-3 gap-1.5 bg-blue-500/15"
+            accessibilityRole="button"
+            accessibilityLabel="Lancer la séance"
+          >
+            <Ionicons name="play" size={16} color="#3B82F6" />
+            <Text className="text-sm font-semibold text-blue-600 dark:text-blue-400">Lancer</Text>
+          </Pressable>
+        )}
       </View>
     </View>
   );
@@ -209,8 +267,11 @@ function SessionCard({
 
 export default function PlanViewScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const colors = useThemeColors();
   const [activePlan, setActivePlan] = useState<ActivePlan | null>(null);
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
+  const [launchSession, setLaunchSession] = useState<PlannedSession | null>(null);
   const slideAnim = useRef(new Animated.Value(0)).current;
 
   const animateSlide = (direction: 'left' | 'right') => {
@@ -293,6 +354,25 @@ export default function PlanViewScreen() {
 
   useFocusEffect(reload);
 
+  const handleLaunch = useCallback((session: PlannedSession) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    if (session.mode === 'climbing') {
+      if (session.climbingActivity === 'bouldering') {
+        router.push('/journal/add-bloc' as any);
+      } else {
+        router.push('/journal/add-voie' as any);
+      }
+    } else if (session.mode === 'exercise') {
+      const protocolId = session.protocolIds?.[0];
+      if (protocolId) {
+        router.push(`/protocol/${protocolId}` as any);
+      }
+    } else if (session.mode === 'climbing-exercise') {
+      setLaunchSession(session);
+    }
+  }, [router]);
+
   if (!activePlan) {
     return (
       <View className="flex-1 bg-white dark:bg-stone-950 items-center justify-center">
@@ -331,7 +411,10 @@ export default function PlanViewScreen() {
 
   const handleToggle = async (sessionId: string) => {
     const completion = completions.find((c) => c.sessionId === sessionId);
-    if (completion?.completed) {
+    const isCompleted = completion?.completed ?? false;
+    const isPartial = !isCompleted && (completion?.progress ?? 0) === 1;
+
+    if (isCompleted || isPartial) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       await uncompleteSessionInPlan(sessionId, viewingWeek);
     } else {
@@ -375,7 +458,8 @@ export default function PlanViewScreen() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-white dark:bg-stone-950 px-5 pt-4">
+    <View className="flex-1 bg-white dark:bg-stone-950">
+    <ScrollView className="flex-1 px-5 pt-4">
       {/* Header */}
       <View className="flex-row items-center mb-2">
         <Text className="text-3xl mr-3">{plan.icon}</Text>
@@ -456,8 +540,9 @@ export default function PlanViewScreen() {
               key={session.id}
               session={session}
               dayNumber={index + 1}
-              completed={completion?.completed ?? false}
+              completion={completion}
               onToggle={() => handleToggle(session.id)}
+              onLaunch={() => handleLaunch(session)}
             />
           );
         })}
@@ -481,5 +566,86 @@ export default function PlanViewScreen() {
         </Pressable>
       </View>
     </ScrollView>
+
+    {/* Activity choice bottom sheet for climbing-exercise sessions */}
+    <Modal
+      visible={launchSession !== null}
+      transparent
+      animationType="slide"
+      onRequestClose={() => setLaunchSession(null)}
+    >
+      <Pressable
+        className="flex-1 bg-black/40"
+        onPress={() => setLaunchSession(null)}
+      />
+      <View
+        className="bg-white dark:bg-stone-900 rounded-t-3xl px-5 pt-5"
+        style={{ paddingBottom: Math.max(insets.bottom, 16) }}
+      >
+        <Text className="text-stone-900 dark:text-stone-50 text-lg font-bold mb-4">
+          Choisir l'activité
+        </Text>
+
+        {/* Climbing option */}
+        <Pressable
+          onPress={() => {
+            setLaunchSession(null);
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            if (launchSession?.climbingActivity === 'bouldering') {
+              router.push('/journal/add-bloc' as any);
+            } else {
+              router.push('/journal/add-voie' as any);
+            }
+          }}
+          className="bg-stone-100 dark:bg-stone-800 rounded-2xl p-4 flex-row items-center mb-3 border border-stone-300 dark:border-stone-700/50"
+          style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+        >
+          <View
+            className="w-11 h-11 rounded-xl items-center justify-center mr-4"
+            style={{ backgroundColor: '#F9731620' }}
+          >
+            <Ionicons
+              name={launchSession?.climbingActivity === 'bouldering' ? 'cube-outline' : 'trending-up-outline'}
+              size={22}
+              color="#F97316"
+            />
+          </View>
+          <View className="flex-1">
+            <Text className="text-stone-900 dark:text-stone-50 font-bold text-base">
+              {launchSession?.climbingActivity === 'bouldering' ? 'Bloc' : 'Voie'}
+            </Text>
+            <Text className="text-stone-500 dark:text-stone-400 text-sm">Séance d'escalade</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.chevron} />
+        </Pressable>
+
+        {/* Hangboard option */}
+        <Pressable
+          onPress={() => {
+            setLaunchSession(null);
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            const protocolId = launchSession?.protocolIds?.[0];
+            if (protocolId) {
+              router.push(`/protocol/${protocolId}` as any);
+            }
+          }}
+          className="bg-stone-100 dark:bg-stone-800 rounded-2xl p-4 flex-row items-center mb-3 border border-stone-300 dark:border-stone-700/50"
+          style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+        >
+          <View
+            className="w-11 h-11 rounded-xl items-center justify-center mr-4"
+            style={{ backgroundColor: '#818CF820' }}
+          >
+            <Ionicons name="hand-left-outline" size={22} color="#818CF8" />
+          </View>
+          <View className="flex-1">
+            <Text className="text-stone-900 dark:text-stone-50 font-bold text-base">Hangboard</Text>
+            <Text className="text-stone-500 dark:text-stone-400 text-sm">Séance de poutre</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.chevron} />
+        </Pressable>
+      </View>
+    </Modal>
+    </View>
   );
 }

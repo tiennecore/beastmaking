@@ -3,10 +3,16 @@ import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { PLAN_TEMPLATES } from '@/constants/plans';
-import { loadActivePlan, saveActivePlan, clearActivePlan } from '@/lib/storage';
+import { getPlanTemplates } from '@/constants/plans';
+import { loadActivePlan, saveActivePlan, clearActivePlan, loadSettings } from '@/lib/storage';
 import { useThemeColors } from '@/lib/theme';
-import { ActivePlan, TrainingPlanTemplate } from '@/types';
+import { ActivePlan, SessionMode, TrainingPlanTemplate } from '@/types';
+
+const SESSION_PILL_ICON: Record<SessionMode, keyof typeof Ionicons.glyphMap> = {
+  climbing: 'body-outline',
+  'climbing-exercise': 'flash-outline',
+  exercise: 'barbell-outline',
+};
 
 function PlanCard({
   plan,
@@ -47,13 +53,12 @@ function PlanCard({
         {plan.description}
       </Text>
       <View className="flex-row flex-wrap gap-1.5 mt-2">
-        {plan.sessions
-          .filter((s) => s.type !== 'rest' && s.type !== 'active-recovery')
-          .map((s) => (
-            <View key={s.id} className="bg-stone-200 dark:bg-stone-700 rounded-full px-2.5 py-0.5">
-              <Text className="text-stone-600 dark:text-stone-300 text-xs">{s.label}</Text>
-            </View>
-          ))}
+        {plan.sessions.map((s) => (
+          <View key={s.id} className="bg-stone-200 dark:bg-stone-700 rounded-full px-2.5 py-0.5 flex-row items-center gap-1">
+            <Ionicons name={SESSION_PILL_ICON[s.mode]} size={11} color="#78716c" />
+            <Text className="text-stone-600 dark:text-stone-300 text-xs">{s.label}</Text>
+          </View>
+        ))}
       </View>
     </Pressable>
   );
@@ -63,12 +68,18 @@ export default function PlansScreen() {
   const router = useRouter();
   const colors = useThemeColors();
   const [activePlan, setActivePlan] = useState<ActivePlan | null>(null);
+  const [hasHomeHangboard, setHasHomeHangboard] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       loadActivePlan().then(setActivePlan);
+      loadSettings().then((saved) => {
+        setHasHomeHangboard(saved?.hasHomeHangboard ?? false);
+      });
     }, [])
   );
+
+  const planTemplates = getPlanTemplates(hasHomeHangboard);
 
   const startPlan = (template: TrainingPlanTemplate) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -145,7 +156,14 @@ export default function PlansScreen() {
         Basés sur le livre Beastmaking
       </Text>
 
-      {PLAN_TEMPLATES.map((template) => (
+      {planTemplates.length === 0 && (
+        <View className="items-center justify-center py-16">
+          <Ionicons name="calendar-outline" size={48} color="#a8a29e" />
+          <Text className="text-stone-400 dark:text-stone-500 text-base mt-4">Aucun plan disponible</Text>
+        </View>
+      )}
+
+      {planTemplates.map((template) => (
         <PlanCard
           key={template.id}
           plan={template}
@@ -167,7 +185,7 @@ export default function PlansScreen() {
         <Text className="text-stone-500 dark:text-stone-400 text-sm mt-1">Créer un plan personnalisé</Text>
       </Pressable>
 
-      <View className="h-8" />
+      <View className="h-20" />
     </ScrollView>
   );
 }

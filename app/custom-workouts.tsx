@@ -46,10 +46,12 @@ function WorkoutCard({
   workout,
   onPress,
   onDelete,
+  onEdit,
 }: {
   workout: CustomWorkout;
   onPress: () => void;
   onDelete: () => void;
+  onEdit: () => void;
 }) {
   const colors = useThemeColors();
   const duration = useMemo(() => workoutDuration(workout.steps), [workout.steps]);
@@ -83,6 +85,19 @@ function WorkoutCard({
         </Text>
         <Text className="text-stone-400 dark:text-stone-500 text-xs">{formatDate(workout.createdAt)}</Text>
       </View>
+      <Pressable
+        onPress={(e) => {
+          e.stopPropagation();
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          onEdit();
+        }}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel="Modifier l'entraînement"
+        style={{ alignSelf: 'flex-start', padding: 4, minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
+      >
+        <Ionicons name="create-outline" size={18} color="#A8A29E" />
+      </Pressable>
     </Pressable>
   );
 }
@@ -105,13 +120,22 @@ export default function CustomWorkoutsScreen() {
       const protocol = PROTOCOLS.find(p => p.id === firstStep.protocolId);
       if (protocol) {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        useTimerStore.getState().setup(protocol, firstStep.grips || [], firstStep.config);
+        useTimerStore.getState().setup(
+          protocol,
+          firstStep.gripMode ?? 'session',
+          firstStep.gripConfigs ?? [],
+          firstStep.config
+        );
         router.push('/timer');
         return;
       }
     }
 
     Alert.alert('Bientôt', 'Le lancement des étapes libres arrive bientôt.');
+  }
+
+  function handleEdit(workout: CustomWorkout) {
+    router.push({ pathname: '/create-workout', params: { editId: workout.id } });
   }
 
   function handleDelete(workout: CustomWorkout) {
@@ -160,6 +184,7 @@ export default function CustomWorkoutsScreen() {
             workout={workout}
             onPress={() => handlePress(workout)}
             onDelete={() => handleDelete(workout)}
+            onEdit={() => handleEdit(workout)}
           />
         ))
       )}
@@ -170,7 +195,7 @@ export default function CustomWorkoutsScreen() {
         </Text>
       )}
 
-      <View className="h-8" />
+      <View className="h-20" />
     </ScrollView>
   );
 }

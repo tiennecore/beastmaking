@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { View, Text, ScrollView, Pressable } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { generatePlan } from '@/lib/plan-generator';
-import { saveActivePlan } from '@/lib/storage';
-import { PlanGoal, PlanSessionType, ActivePlan } from '@/types';
+import { saveActivePlan, loadSettings } from '@/lib/storage';
+import { PlanGoal, ActivePlan } from '@/types';
+
+type ActivityKey = 'hangboard' | 'bouldering' | 'route' | 'strength';
 
 type Step = 1 | 2 | 3;
 
@@ -17,8 +19,8 @@ const GOALS: { key: PlanGoal; label: string; icon: string; desc: string }[] = [
 
 const DAYS = [3, 4, 5, 6];
 
-const ACTIVITIES: { key: PlanSessionType; label: string; icon: string }[] = [
-  { key: 'hangboard-force', label: 'Poutre', icon: '🤏' },
+const ALL_ACTIVITIES: { key: ActivityKey; label: string; icon: string; requiresHomeHangboard?: boolean }[] = [
+  { key: 'hangboard', label: 'Poutre', icon: '🤏' },
   { key: 'bouldering', label: 'Bloc', icon: '🧗' },
   { key: 'route', label: 'Voie', icon: '🏔️' },
   { key: 'strength', label: 'Muscu', icon: '🏋️' },
@@ -55,13 +57,33 @@ export default function CreatePlanScreen() {
   const [step, setStep] = useState<Step>(1);
   const [goal, setGoal] = useState<PlanGoal>('mixed');
   const [days, setDays] = useState(4);
-  const [activities, setActivities] = useState<PlanSessionType[]>([
-    'hangboard-force',
-    'bouldering',
-    'route',
-  ]);
+  const [activities, setActivities] = useState<ActivityKey[]>(['bouldering', 'route']);
+  const [hasHomeHangboard, setHasHomeHangboard] = useState(false);
 
-  const toggleActivity = (key: PlanSessionType) => {
+  useFocusEffect(
+    useCallback(() => {
+      loadSettings().then((saved) => {
+        const homeHangboard = saved?.hasHomeHangboard ?? false;
+        setHasHomeHangboard(homeHangboard);
+        setActivities((prev) => {
+          if (homeHangboard && !prev.includes('hangboard')) {
+            return ['hangboard', ...prev];
+          }
+          if (!homeHangboard) {
+            return prev.filter((a) => a !== 'hangboard');
+          }
+          return prev;
+        });
+      });
+    }, [])
+  );
+
+  const availableActivities = ALL_ACTIVITIES.filter((a) => {
+    if (a.key === 'hangboard' && !hasHomeHangboard) return false;
+    return true;
+  });
+
+  const toggleActivity = (key: ActivityKey) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setActivities((prev) =>
       prev.includes(key) ? prev.filter((a) => a !== key) : [...prev, key]
@@ -70,7 +92,7 @@ export default function CreatePlanScreen() {
 
   const handleGenerate = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    const template = generatePlan({ goal, daysPerWeek: days, activities });
+    const template = generatePlan({ goal, daysPerWeek: days, activities, hasHomeHangboard });
     const active: ActivePlan = {
       id: Date.now().toString(),
       plan: template,
@@ -155,7 +177,14 @@ export default function CreatePlanScreen() {
 
       {step === 3 && (
         <View className="gap-3">
-          {ACTIVITIES.map((a) => (
+          {!hasHomeHangboard && (
+            <View className="bg-stone-100 dark:bg-stone-800 border border-stone-300 dark:border-stone-700/50 rounded-2xl p-3 mb-1">
+              <Text className="text-stone-500 dark:text-stone-400 text-xs">
+                La poutre n'est disponible qu'associée à une séance en salle. Activez "Poutre à la maison" dans les réglages pour des séances poutre autonomes.
+              </Text>
+            </View>
+          )}
+          {availableActivities.map((a) => (
             <OptionCard
               key={a.key}
               selected={activities.includes(a.key)}
@@ -167,6 +196,13 @@ export default function CreatePlanScreen() {
               </View>
             </OptionCard>
           ))}
+          {hasHomeHangboard && (
+            <View className="bg-orange-500/10 border border-orange-500/20 rounded-2xl p-3 mt-1">
+              <Text className="text-orange-600 dark:text-orange-400 text-xs">
+                Poutre à la maison activée : des séances poutre seules seront générées en plus des séances en salle.
+              </Text>
+            </View>
+          )}
         </View>
       )}
 

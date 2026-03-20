@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColors } from '@/lib/theme';
 
 type MenuItemConfig = {
@@ -15,7 +16,7 @@ type MenuItemConfig = {
 
 const ITEMS: Record<string, MenuItemConfig> = {
   protocols: {
-    title: 'Entrainements',
+    title: 'Hangboarding',
     subtitle: '9 protocoles Beastmaking',
     icon: 'barbell-outline',
     href: '/protocols',
@@ -49,19 +50,19 @@ const ITEMS: Record<string, MenuItemConfig> = {
     href: '/library',
     color: '#22D3EE',
   },
-  history: {
-    title: 'Historique',
-    subtitle: 'Séances passées',
-    icon: 'time-outline',
-    href: '/history',
+  journal: {
+    title: 'Suivi',
+    subtitle: 'Poutre, bloc, voie',
+    icon: 'stats-chart-outline',
+    href: '/journal',
     color: '#818CF8',
   },
-  climbing: {
-    title: 'Grimpe',
-    subtitle: 'Bloc, voie, renfo',
-    icon: 'trending-up-outline',
-    href: '/climbing',
-    color: '#A3E635',
+  statistics: {
+    title: 'Statistiques',
+    subtitle: 'Évolution et progression',
+    icon: 'bar-chart-outline',
+    href: '/statistics',
+    color: '#10B981',
   },
 };
 
@@ -164,6 +165,7 @@ function ListCard({ item, onPress }: { item: MenuItemConfig; onPress: () => void
 export default function HomeScreen() {
   const router = useRouter();
   const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
 
   const go = (href: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -171,7 +173,10 @@ export default function HomeScreen() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-white dark:bg-stone-950 px-5 pt-14">
+    <ScrollView
+      className="flex-1 bg-white dark:bg-stone-950 px-5"
+      contentContainerStyle={{ paddingTop: insets.top + 16 }}
+    >
       <View className="flex-row items-start justify-between mb-8">
         <View>
           <Text className="text-stone-900 dark:text-stone-50 text-4xl font-bold tracking-tight">
@@ -193,15 +198,15 @@ export default function HomeScreen() {
       {/* Hero — main action */}
       <HeroCard item={ITEMS.protocols} onPress={() => go('/protocols')} />
 
-      {/* Plans */}
-      <View className="mt-4">
-        <ListCard item={ITEMS.plans} onPress={() => go('/plans')} />
-      </View>
-
       {/* Grid — create & custom */}
       <View className="flex-row gap-3 mt-4">
         <TileCard item={ITEMS.create} onPress={() => go('/create-workout')} />
         <TileCard item={ITEMS.custom} onPress={() => go('/custom-workouts')} />
+      </View>
+
+      {/* Plans */}
+      <View className="mt-4">
+        <ListCard item={ITEMS.plans} onPress={() => go('/plans')} />
       </View>
 
       {/* Section: Apprendre */}
@@ -213,13 +218,13 @@ export default function HomeScreen() {
       {/* Section: Suivi */}
       <View className="mt-8">
         <SectionLabel text="Suivi" />
-        <View className="flex-row gap-3">
-          <TileCard item={ITEMS.history} onPress={() => go('/history')} />
-          <TileCard item={ITEMS.climbing} onPress={() => go('/climbing')} />
+        <View className="gap-3">
+          <ListCard item={ITEMS.journal} onPress={() => go('/journal')} />
+          <ListCard item={ITEMS.statistics} onPress={() => go('/statistics')} />
         </View>
       </View>
 
-      <View className="h-12" />
+      <View className="h-20" />
     </ScrollView>
   );
 }

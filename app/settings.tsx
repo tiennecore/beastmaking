@@ -4,19 +4,17 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useFocusEffect } from 'expo-router';
 import { useColorScheme } from 'nativewind';
-import { loadSettings, saveSettings, clearHistory, clearCustomWorkouts, clearClimbingSessions } from '@/lib/storage';
-import { useThemeColors, saveTheme, ThemeChoice } from '@/lib/theme';
-
-type AppSettings = {
-  soundEnabled: boolean;
-  hapticsEnabled: boolean;
-  countdownBeep: boolean;
-};
+import { loadSettings, saveSettings, clearHistory, clearCustomWorkouts, clearClimbingSessions, AppSettings } from '@/lib/storage';
+import { saveTheme, ThemeChoice } from '@/lib/theme';
+import { DEFAULT_GRADE, nextGrade, prevGrade } from '@/constants/grades';
+import { SegmentedControl } from '@/components/SegmentedControl';
 
 const DEFAULT_SETTINGS: AppSettings = {
   soundEnabled: true,
   hapticsEnabled: true,
   countdownBeep: true,
+  defaultGrade: DEFAULT_GRADE,
+  hasHomeHangboard: false,
 };
 
 function SettingRow({
@@ -83,10 +81,16 @@ function DangerButton({
   );
 }
 
+const THEME_OPTIONS: Array<{ value: ThemeChoice; label: string; icon: keyof typeof Ionicons.glyphMap }> = [
+  { value: 'light', label: 'Clair', icon: 'sunny-outline' },
+  { value: 'dark', label: 'Sombre', icon: 'moon-outline' },
+  { value: 'system', label: 'Système', icon: 'phone-portrait-outline' },
+];
+
 export default function SettingsScreen() {
   const { colorScheme, setColorScheme } = useColorScheme();
-  const colors = useThemeColors();
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+  const activeTheme: ThemeChoice = colorScheme === undefined ? 'system' : colorScheme as ThemeChoice;
 
   useFocusEffect(
     useCallback(() => {
@@ -96,7 +100,7 @@ export default function SettingsScreen() {
     }, [])
   );
 
-  const update = (key: keyof AppSettings, value: boolean) => {
+  const update = (key: keyof AppSettings, value: boolean | string) => {
     const next = { ...settings, [key]: value };
     setSettings(next);
     saveSettings(next);
@@ -131,40 +135,11 @@ export default function SettingsScreen() {
         Apparence
       </Text>
       <View className="bg-stone-100 dark:bg-stone-800 rounded-3xl px-4 py-3 border border-stone-300 dark:border-stone-700/50 mb-6">
-        <View className="flex-row gap-2">
-          {([
-            { key: 'light' as ThemeChoice, label: 'Clair', icon: 'sunny-outline' as const },
-            { key: 'dark' as ThemeChoice, label: 'Sombre', icon: 'moon-outline' as const },
-            { key: 'system' as ThemeChoice, label: 'Système', icon: 'phone-portrait-outline' as const },
-          ]).map((option) => {
-            const active = colorScheme === option.key || (option.key === 'system' && colorScheme === undefined);
-            return (
-              <Pressable
-                key={option.key}
-                onPress={() => saveTheme(option.key, setColorScheme)}
-                className={`flex-1 items-center py-3 rounded-2xl ${
-                  active ? 'bg-orange-500' : 'bg-stone-200 dark:bg-stone-700'
-                }`}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: active }}
-                accessibilityLabel={option.label}
-              >
-                <Ionicons
-                  name={option.icon}
-                  size={20}
-                  color={active ? '#fff' : colors.textSecondary}
-                />
-                <Text
-                  className={`text-xs font-semibold mt-1 ${
-                    active ? 'text-white' : 'text-stone-500 dark:text-stone-400'
-                  }`}
-                >
-                  {option.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <SegmentedControl
+          options={THEME_OPTIONS}
+          value={activeTheme}
+          onChange={(theme) => saveTheme(theme, setColorScheme)}
+        />
       </View>
 
       {/* Audio & Feedback */}
@@ -197,6 +172,59 @@ export default function SettingsScreen() {
           description="Retour haptique sur les interactions"
           value={settings.hapticsEnabled}
           onToggle={(v) => update('hapticsEnabled', v)}
+        />
+      </View>
+
+      {/* Climbing */}
+      <Text className="text-stone-400 dark:text-stone-500 text-xs font-semibold uppercase tracking-widest mb-1 ml-1">
+        Escalade
+      </Text>
+      <View className="bg-stone-100 dark:bg-stone-800 rounded-3xl px-4 border border-stone-300 dark:border-stone-700/50 mb-6">
+        <View className="flex-row items-center py-4">
+          <View
+            className="w-10 h-10 rounded-xl items-center justify-center mr-3"
+            style={{ backgroundColor: '#2563EB20' }}
+          >
+            <Ionicons name="trending-up-outline" size={20} color="#2563EB" />
+          </View>
+          <View className="flex-1">
+            <Text className="text-stone-900 dark:text-stone-50 font-semibold">Cotation par défaut</Text>
+            <Text className="text-stone-400 dark:text-stone-500 text-xs mt-0.5">
+              Cotation initiale lors d'une nouvelle entrée
+            </Text>
+          </View>
+          <View className="flex-row items-center gap-2">
+            <Pressable
+              onPress={() => update('defaultGrade', prevGrade(settings.defaultGrade ?? DEFAULT_GRADE))}
+              className="bg-stone-200 dark:bg-stone-700 rounded-lg w-11 h-11 items-center justify-center"
+              accessibilityRole="button"
+              accessibilityLabel="Diminuer la cotation par défaut"
+              hitSlop={4}
+            >
+              <Text className="text-stone-600 dark:text-stone-300 font-bold text-lg">-</Text>
+            </Pressable>
+            <Text className="text-stone-900 dark:text-stone-50 text-lg font-bold w-12 text-center">
+              {settings.defaultGrade ?? DEFAULT_GRADE}
+            </Text>
+            <Pressable
+              onPress={() => update('defaultGrade', nextGrade(settings.defaultGrade ?? DEFAULT_GRADE))}
+              className="bg-stone-200 dark:bg-stone-700 rounded-lg w-11 h-11 items-center justify-center"
+              accessibilityRole="button"
+              accessibilityLabel="Augmenter la cotation par défaut"
+              hitSlop={4}
+            >
+              <Text className="text-stone-600 dark:text-stone-300 font-bold text-lg">+</Text>
+            </Pressable>
+          </View>
+        </View>
+        <View className="h-px bg-stone-200 dark:bg-stone-700/50" />
+        <SettingRow
+          icon="home-outline"
+          iconColor="#F97316"
+          label="Poutre à la maison"
+          description="Permet des séances poutre sans aller à la salle"
+          value={settings.hasHomeHangboard ?? false}
+          onToggle={(v) => update('hasHomeHangboard', v)}
         />
       </View>
 
@@ -237,7 +265,7 @@ export default function SettingsScreen() {
         </Text>
       </View>
 
-      <View className="h-8" />
+      <View className="h-20" />
     </ScrollView>
   );
 }

@@ -3,8 +3,8 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'nativewind';
 import * as Notifications from 'expo-notifications';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { loadSounds, unloadSounds } from '@/lib/sounds';
-import { setupNotificationChannel } from '@/lib/background-timer';
 import { useThemeColors, initTheme } from '@/lib/theme';
 import '../global.css';
 
@@ -23,7 +23,6 @@ export default function RootLayout() {
 
   useEffect(() => {
     loadSounds();
-    setupNotificationChannel();
     return () => { unloadSounds(); };
   }, []);
 
@@ -32,25 +31,26 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
       <Stack
         screenOptions={{
           headerStyle: { backgroundColor: colors.bg },
           headerTintColor: colors.text,
           contentStyle: { backgroundColor: colors.bg },
+          animation: 'slide_from_right',
         }}
       >
         <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="protocols" options={{ title: 'Entraînements' }} />
+        <Stack.Screen name="protocols" options={{ title: 'Hangboarding' }} />
         <Stack.Screen name="library" options={{ title: 'Comprendre' }} />
         <Stack.Screen name="create-workout" options={{ title: 'Créer un entraînement' }} />
         <Stack.Screen name="custom-workouts" options={{ title: 'Mes entraînements' }} />
-        <Stack.Screen name="history" options={{ title: 'Historique' }} />
-        <Stack.Screen name="climbing" options={{ title: 'Grimpe' }} />
         <Stack.Screen name="plans" options={{ title: 'Plans' }} />
         <Stack.Screen name="plan/[id]" options={{ title: 'Mon plan' }} />
         <Stack.Screen name="create-plan" options={{ title: 'Créer un plan' }} />
+        <Stack.Screen name="journal" options={{ headerShown: false }} />
+        <Stack.Screen name="statistics" options={{ title: 'Statistiques' }} />
         <Stack.Screen name="settings" options={{ title: 'Paramètres' }} />
         <Stack.Screen
           name="protocol/[id]"
@@ -65,6 +65,6 @@ export default function RootLayout() {
           options={{ title: 'Récapitulatif', headerBackVisible: false, gestureEnabled: false }}
         />
       </Stack>
-    </>
+    </GestureHandlerRootView>
   );
 }
