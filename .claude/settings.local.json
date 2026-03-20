@@ -25,7 +25,9 @@
       "WebFetch(domain:dev.to)",
       "Bash(ffmpeg:*)",
       "mcp__claude_ai_Notion__notion-create-pages",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "WebFetch(domain:job-logs.eascdn.net)",
+      "WebFetch(domain:expo.dev)"
     ],
     "defaultMode": "bypassPermissions"
   }

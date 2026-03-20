@@ -32,10 +32,10 @@ For each agent, the skills to invoke before and after work are defined below.
 | `code-writer` | `expo-react-native-typescript` (always) + `clean-code` (always) + `test-driven-development` (if core logic) + `typescript-advanced-types` (if complex types) + `architecture-patterns` (if new module) | `superpowers:verification-before-completion` |
 | `quick-coder` | — (passive reference to `expo-react-native-typescript` + `tailwind-design-system`) | — |
 | `bug-fixer` | `systematic-debugging` (always, mandatory) + `expo-react-native-typescript` (if Expo/RN error) | `superpowers:verification-before-completion` |
-| `code-reviewer` | `clean-code` (always) + `typescript-advanced-types` (if suspect types) | — |
+| `code-reviewer` | `clean-code` (always) + `typescript-advanced-types` (if suspect types) + `userinterface-wiki` (if UI/animations) | — |
 | `refactorer` | `clean-code` (always) + `typescript-advanced-types` (if fuzzy types) | `superpowers:verification-before-completion` |
 | `test-writer` | `superpowers:test-driven-development` + `vitest` (unit/integration tests) | `superpowers:verification-before-completion` |
-| `css-styler` | `ui-ux-pro-max` (complex design) or `tailwind-design-system` (design tokens) or `frontend-design` (layout/hierarchy) | — |
+| `css-styler` | `userinterface-wiki` (always, mandatory) + `ui-ux-pro-max` (complex design) or `tailwind-design-system` (design tokens) or `frontend-design` (layout/hierarchy) | — |
 | `ux-reviewer` | `ui-ux-pro-max` (always, with stack: react-native) | — |
 | `doc-writer` | `crafting-effective-readmes` (if README) or `changelog-automation` (if CHANGELOG) | — |
 | `devops` | `deployment-pipeline-design` (if CI/CD) or `security-requirement-extraction` (if security) | `superpowers:verification-before-completion` |

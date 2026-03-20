@@ -22,12 +22,25 @@
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "plugins": [
       "expo-router",
-      ["expo-audio", { "enableBackgroundPlayback": true }],
-      "expo-notifications"
-    ]
+      "expo-audio",
+      "expo-notifications",
+      "expo-font",
+      "expo-asset"
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "8c785bf4-18d2-4d68-be93-8f47ea12ce7f"
+      }
+    },
+    "owner": "tiennecore"
   }
 }

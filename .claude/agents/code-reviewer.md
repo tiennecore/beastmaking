@@ -12,6 +12,7 @@ model: sonnet
 skills:
   - clean-code
   - typescript-advanced-types
+  - userinterface-wiki
 ---
 
 # Code Reviewer — Beastmaking
@@ -30,6 +31,12 @@ Invoke via the Skill tool before starting the review.
 Invoke via the Skill tool to deepen the analysis of suspect types.
 -> Provide: reviewed files + code excerpts with problematic types
 -> Expected: precise types suggested, generics or utility types as appropriate
+
+**`userinterface-wiki`** *(if reviewing UI components with animations, timing, shadows, or typography)*
+Invoke via the Skill tool to check against UI best practices.
+-> Provide: component files with visual/animation code
+-> Expected: violations of timing rules, UX laws, visual design principles
+-> Note: Framer Motion rules → adapt to Reanimated/Moti equivalents for React Native
 
 ## What you check (by priority)
 1. **Critical**: bugs, memory leaks, `any`, direct mutations, unhandled errors

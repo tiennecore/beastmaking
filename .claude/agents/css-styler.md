@@ -12,6 +12,7 @@ tools:
   - Grep
 model: sonnet
 skills:
+  - userinterface-wiki
   - tailwind-design-system
   - frontend-design
   - ui-ux-pro-max
@@ -24,6 +25,12 @@ You are a UI/styling specialist with NativeWind (TailwindCSS for React Native). 
 ## Skill invocations
 
 ### At the start of work
+**`userinterface-wiki`** *(always — mandatory)*
+Invoke via the Skill tool before any styling work.
+-> Provides: 152 rules covering animations, timing functions, typography, visual design, UX laws
+-> Expected: applicable rules for the current task (timing, springs, shadows, spacing, etc.)
+-> Note: Framer Motion rules → adapt to Reanimated/Moti equivalents for React Native
+
 **`ui-ux-pro-max`** *(if complex multi-component design or new palette)*
 Invoke via the Skill tool before defining global visual choices.
 -> Provide: type of interface + target user + desired mood + stack: react-native
