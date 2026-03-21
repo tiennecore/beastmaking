@@ -15,8 +15,9 @@ export function loadSounds() {
 
 export function playCountdown() {
   if (!shortBeep) return;
-  shortBeep.seekTo(0);
-  shortBeep.play();
+  shortBeep.seekTo(0).then(() => shortBeep?.play()).catch(() => {
+    shortBeep?.play();
+  });
 }
 
 export function playStart() {
@@ -27,8 +28,9 @@ export function playStart() {
 
 export function playEnd() {
   if (!longBeep) return;
-  longBeep.seekTo(0);
-  longBeep.play();
+  longBeep.seekTo(0).then(() => longBeep?.play()).catch(() => {
+    longBeep?.play();
+  });
 }
 
 export function playSessionEnd() {
