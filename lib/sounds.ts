@@ -1,5 +1,8 @@
 import { createAudioPlayer, AudioPlayer } from 'expo-audio';
 
+const SHORT_BEEP_SOURCE = require('@/assets/sounds/beep-short.mp3') as number;
+const LONG_BEEP_SOURCE = require('@/assets/sounds/beep-long.mp3') as number;
+
 let shortBeep: AudioPlayer | null = null;
 let longBeep: AudioPlayer | null = null;
 
@@ -9,15 +12,14 @@ export function setNativeSoundMode(_enabled: boolean) {
 }
 
 export function loadSounds() {
-  shortBeep = createAudioPlayer(require('@/assets/sounds/beep-short.mp3'));
-  longBeep = createAudioPlayer(require('@/assets/sounds/beep-long.mp3'));
+  shortBeep = createAudioPlayer(SHORT_BEEP_SOURCE);
+  longBeep = createAudioPlayer(LONG_BEEP_SOURCE);
 }
 
 export function playCountdown() {
   if (!shortBeep) return;
-  shortBeep.seekTo(0).then(() => shortBeep?.play()).catch(() => {
-    shortBeep?.play();
-  });
+  shortBeep.replace(SHORT_BEEP_SOURCE);
+  shortBeep.play();
 }
 
 export function playStart() {
@@ -28,9 +30,8 @@ export function playStart() {
 
 export function playEnd() {
   if (!longBeep) return;
-  longBeep.seekTo(0).then(() => longBeep?.play()).catch(() => {
-    longBeep?.play();
-  });
+  longBeep.replace(LONG_BEEP_SOURCE);
+  longBeep.play();
 }
 
 export function playSessionEnd() {

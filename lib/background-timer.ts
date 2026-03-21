@@ -38,6 +38,7 @@ export async function startBackgroundTimer(
     if (newStatus !== 'granted') return;
   }
   await ensureChannel();
+  const trigger = Platform.OS === 'android' ? { channelId: CHANNEL_ID } : null;
   await Notifications.scheduleNotificationAsync({
     identifier: NOTIF_ID,
     content: {
@@ -45,9 +46,8 @@ export async function startBackgroundTimer(
       body: formatTime(timeRemaining),
       sticky: true,
       autoDismiss: false,
-      ...(Platform.OS === 'android' ? { channelId: CHANNEL_ID } : {}),
     },
-    trigger: null,
+    trigger,
   });
 }
 
@@ -61,6 +61,7 @@ export async function updateBackgroundNotification(
   const body = isPaused
     ? `En pause · ${formatTime(timeRemaining)}`
     : formatTime(timeRemaining);
+  const trigger = Platform.OS === 'android' ? { channelId: CHANNEL_ID } : null;
   await Notifications.scheduleNotificationAsync({
     identifier: NOTIF_ID,
     content: {
@@ -68,13 +69,15 @@ export async function updateBackgroundNotification(
       body,
       sticky: true,
       autoDismiss: false,
-      ...(Platform.OS === 'android' ? { channelId: CHANNEL_ID } : {}),
     },
-    trigger: null,
+    trigger,
   });
 }
 
 export async function stopBackgroundTimer(): Promise<void> {
-  await Notifications.cancelScheduledNotificationAsync(NOTIF_ID);
-  await Notifications.dismissNotificationAsync(NOTIF_ID);
+  try {
+    await Notifications.dismissNotificationAsync(NOTIF_ID);
+  } catch {
+    // notification may already be gone
+  }
 }
