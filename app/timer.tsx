@@ -10,7 +10,7 @@ import { useThemeColors } from '@/lib/theme';
 import { useTimerStore } from '@/stores/timer-store';
 import { PHASE_COLORS, PHASE_LABELS } from '@/constants/colors';
 import { getGripById, getHoldById } from '@/constants/grips';
-import { playCountdown, playStart, playEnd } from '@/lib/sounds';
+import { loadSounds, unloadSounds, playCountdown, playStart, playEnd } from '@/lib/sounds';
 import {
   startBackgroundTimer,
   updateBackgroundNotification,
@@ -195,6 +195,11 @@ export default function TimerScreen() {
     }
     return () => stopTicking();
   }, [isRunning, isPaused]);
+
+  useEffect(() => {
+    loadSounds();
+    return () => unloadSounds();
+  }, []);
 
   useEffect(() => {
     if (!isRunning && phases.length > 0 && currentPhaseIndex === 0) {
