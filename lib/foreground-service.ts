@@ -1,13 +1,32 @@
-import { NativeModules, NativeEventEmitter, Platform } from 'react-native';
-
-const { TimerNativeModule } = NativeModules;
+import { Platform } from 'react-native';
 
 const isAndroid = Platform.OS === 'android';
-const emitter = isAndroid && TimerNativeModule
-  ? new NativeEventEmitter(TimerNativeModule)
-  : null;
 
-function formatTimeForNotif(seconds: number): string {
+let TimerNativeModule: {
+  startService: (phase: string, time: string, color: string) => void;
+  updateNotification: (phase: string, time: string, color: string, isPaused: boolean) => void;
+  stopService: () => void;
+  playBeep: (type: string) => void;
+} | null = null;
+
+let emitter: { addListener: (event: string, callback: () => void) => { remove: () => void } } | null = null;
+
+if (isAndroid) {
+  try {
+    const { requireNativeModule } = require('expo-modules-core') as {
+      requireNativeModule: (name: string) => typeof TimerNativeModule;
+    };
+    TimerNativeModule = requireNativeModule('TimerNativeModule');
+    const { EventEmitter } = require('expo-modules-core') as {
+      EventEmitter: new (module: typeof TimerNativeModule) => typeof emitter;
+    };
+    emitter = new EventEmitter(TimerNativeModule);
+  } catch (_) {
+    // Module unavailable in Expo Go or iOS
+  }
+}
+
+function formatTime(seconds: number): string {
   const s = Math.max(0, Math.round(seconds));
   const min = Math.floor(s / 60);
   const sec = s % 60;
@@ -15,13 +34,9 @@ function formatTimeForNotif(seconds: number): string {
   return `${min}:${String(sec).padStart(2, '0')}`;
 }
 
-export function startForegroundService(
-  phase: string,
-  timeRemaining: number,
-  color: string
-): void {
-  if (!isAndroid || !TimerNativeModule) return;
-  TimerNativeModule.startService(phase, formatTimeForNotif(timeRemaining), color);
+export function startForegroundService(phase: string, timeRemaining: number, color: string): void {
+  if (!TimerNativeModule) return;
+  TimerNativeModule.startService(phase, formatTime(timeRemaining), color);
 }
 
 export function updateForegroundNotification(
@@ -30,22 +45,17 @@ export function updateForegroundNotification(
   color: string,
   isPaused: boolean
 ): void {
-  if (!isAndroid || !TimerNativeModule) return;
-  TimerNativeModule.updateNotification(
-    phase,
-    formatTimeForNotif(timeRemaining),
-    color,
-    isPaused
-  );
+  if (!TimerNativeModule) return;
+  TimerNativeModule.updateNotification(phase, formatTime(timeRemaining), color, isPaused);
 }
 
 export function stopForegroundService(): void {
-  if (!isAndroid || !TimerNativeModule) return;
+  if (!TimerNativeModule) return;
   TimerNativeModule.stopService();
 }
 
 export function playNativeBeep(type: 'short' | 'long'): void {
-  if (!isAndroid || !TimerNativeModule) return;
+  if (!TimerNativeModule) return;
   TimerNativeModule.playBeep(type);
 }
 
