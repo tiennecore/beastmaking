@@ -57,7 +57,7 @@ export async function updateBackgroundNotification(
   _color: string,
   isPaused: boolean
 ): Promise<void> {
-  if (!channelReady && Platform.OS === 'android') return;
+  await ensureChannel();
   const body = isPaused
     ? `En pause · ${formatTime(timeRemaining)}`
     : formatTime(timeRemaining);
