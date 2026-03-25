@@ -1,14 +1,14 @@
 import { Alert } from 'react-native';
 import { createAudioPlayer, setAudioModeAsync, AudioPlayer } from 'expo-audio';
-
-const SHORT_BEEP_SOURCE = require('@/assets/sounds/beep-short.mp3') as number;
-const LONG_BEEP_SOURCE = require('@/assets/sounds/beep-long.mp3') as number;
+import { Asset } from 'expo-asset';
 
 let shortBeep: AudioPlayer | null = null;
 let longBeep: AudioPlayer | null = null;
 let shortBeepReady = false;
 let longBeepReady = false;
 let playCount = 0;
+let resolvedShortUri: string | null = null;
+let resolvedLongUri: string | null = null;
 
 // Native sound mode is disabled — foreground service native module not registered
 export function setNativeSoundMode(_enabled: boolean) {
@@ -24,15 +24,36 @@ export async function loadSounds() {
     console.warn('[sounds] setAudioModeAsync ERROR:', e);
   }
 
+  // Resolve assets via expo-asset to get reliable local URIs in production builds
   try {
-    shortBeep = createAudioPlayer(SHORT_BEEP_SOURCE);
+    const shortAsset = Asset.fromModule(require('@/assets/sounds/beep-short.mp3'));
+    await shortAsset.downloadAsync();
+    resolvedShortUri = shortAsset.localUri;
+    console.warn('[sounds] shortAsset resolved — localUri:', resolvedShortUri);
+  } catch (e) {
+    console.warn('[sounds] shortAsset resolve ERROR:', e);
+  }
+
+  try {
+    const longAsset = Asset.fromModule(require('@/assets/sounds/beep-long.mp3'));
+    await longAsset.downloadAsync();
+    resolvedLongUri = longAsset.localUri;
+    console.warn('[sounds] longAsset resolved — localUri:', resolvedLongUri);
+  } catch (e) {
+    console.warn('[sounds] longAsset resolve ERROR:', e);
+  }
+
+  try {
+    if (!resolvedShortUri) throw new Error('shortAsset localUri is null');
+    shortBeep = createAudioPlayer({ uri: resolvedShortUri });
     console.warn('[sounds] shortBeep created, isLoaded:', shortBeep.isLoaded);
   } catch (e) {
     console.warn('[sounds] createAudioPlayer(shortBeep) ERROR:', e);
   }
 
   try {
-    longBeep = createAudioPlayer(LONG_BEEP_SOURCE);
+    if (!resolvedLongUri) throw new Error('longAsset localUri is null');
+    longBeep = createAudioPlayer({ uri: resolvedLongUri });
     console.warn('[sounds] longBeep created, isLoaded:', longBeep.isLoaded);
   } catch (e) {
     console.warn('[sounds] createAudioPlayer(longBeep) ERROR:', e);
@@ -63,15 +84,19 @@ export async function loadSounds() {
   if (longBeep) longBeep.volume = 1.0;
 
   console.warn('[sounds] loadSounds() done — shortBeepReady:', shortBeepReady, 'longBeepReady:', longBeepReady);
-  Alert.alert('Sound Debug', `shortBeep: ${shortBeepReady}, longBeep: ${longBeepReady}, isLoaded: ${shortBeep?.isLoaded}/${longBeep?.isLoaded}, volume: ${shortBeep?.volume}`, [
-    { text: 'Test Sound', onPress: () => {
-      if (shortBeep) {
-        shortBeep.play();
-        Alert.alert('Test', `playing: ${shortBeep.playing}`);
-      }
-    }},
-    { text: 'OK' },
-  ]);
+  Alert.alert(
+    'Sound Debug',
+    `shortBeep: ${shortBeepReady}, longBeep: ${longBeepReady}\nisLoaded: ${shortBeep?.isLoaded}/${longBeep?.isLoaded}\nvolume: ${shortBeep?.volume}\nshortURI: ${resolvedShortUri}\nlongURI: ${resolvedLongUri}`,
+    [
+      { text: 'Test Sound', onPress: () => {
+        if (shortBeep) {
+          shortBeep.play();
+          Alert.alert('Test', `playing: ${shortBeep.playing}`);
+        }
+      }},
+      { text: 'OK' },
+    ],
+  );
 }
 
 async function replayPlayer(player: AudioPlayer, name: string) {
