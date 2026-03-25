@@ -14,35 +14,67 @@ export function setNativeSoundMode(_enabled: boolean) {
 }
 
 export async function loadSounds() {
-  await setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: false });
-  shortBeep = createAudioPlayer(SHORT_BEEP_SOURCE);
-  longBeep = createAudioPlayer(LONG_BEEP_SOURCE);
+  console.warn('[sounds] loadSounds() called');
   try {
-    await shortBeep.seekTo(0);
-    shortBeepReady = true;
-  } catch {
-    // pre-warm failed, will retry on first play
+    await setAudioModeAsync({ playsInSilentMode: true, shouldPlayInBackground: false });
+    console.warn('[sounds] setAudioModeAsync OK');
+  } catch (e) {
+    console.warn('[sounds] setAudioModeAsync ERROR:', e);
   }
+
   try {
-    await longBeep.seekTo(0);
-    longBeepReady = true;
-  } catch {
-    // pre-warm failed, will retry on first play
+    shortBeep = createAudioPlayer(SHORT_BEEP_SOURCE);
+    console.warn('[sounds] shortBeep created, isLoaded:', shortBeep.isLoaded);
+  } catch (e) {
+    console.warn('[sounds] createAudioPlayer(shortBeep) ERROR:', e);
   }
+
+  try {
+    longBeep = createAudioPlayer(LONG_BEEP_SOURCE);
+    console.warn('[sounds] longBeep created, isLoaded:', longBeep.isLoaded);
+  } catch (e) {
+    console.warn('[sounds] createAudioPlayer(longBeep) ERROR:', e);
+  }
+
+  if (shortBeep) {
+    try {
+      await shortBeep.seekTo(0);
+      shortBeepReady = true;
+      console.warn('[sounds] shortBeep seekTo(0) OK, isLoaded:', shortBeep.isLoaded);
+    } catch (e) {
+      console.warn('[sounds] shortBeep seekTo(0) FAILED:', e);
+    }
+  }
+
+  if (longBeep) {
+    try {
+      await longBeep.seekTo(0);
+      longBeepReady = true;
+      console.warn('[sounds] longBeep seekTo(0) OK, isLoaded:', longBeep.isLoaded);
+    } catch (e) {
+      console.warn('[sounds] longBeep seekTo(0) FAILED:', e);
+    }
+  }
+
+  console.warn('[sounds] loadSounds() done — shortBeepReady:', shortBeepReady, 'longBeepReady:', longBeepReady);
 }
 
-async function replayPlayer(player: AudioPlayer) {
+async function replayPlayer(player: AudioPlayer, name: string) {
+  console.warn(`[sounds] replayPlayer(${name}) called — playing:`, player.playing, 'isLoaded:', player.isLoaded, 'currentTime:', player.currentTime);
   try {
     await player.seekTo(0);
+    console.warn(`[sounds] replayPlayer(${name}) seekTo(0) OK`);
     player.play();
-  } catch {
-    // skip if player is not ready
+    console.warn(`[sounds] replayPlayer(${name}) play() called`);
+  } catch (e) {
+    console.warn(`[sounds] replayPlayer(${name}) ERROR:`, e);
   }
 }
 
 export function playCountdown() {
+  console.warn('[sounds] playCountdown() called — shortBeep exists:', !!shortBeep, 'shortBeepReady:', shortBeepReady);
   if (!shortBeep || !shortBeepReady) return;
-  replayPlayer(shortBeep);
+  replayPlayer(shortBeep, 'shortBeep');
 }
 
 export function playStart() {
@@ -52,8 +84,9 @@ export function playStart() {
 }
 
 export function playEnd() {
+  console.warn('[sounds] playEnd() called — longBeep exists:', !!longBeep, 'longBeepReady:', longBeepReady);
   if (!longBeep || !longBeepReady) return;
-  replayPlayer(longBeep);
+  replayPlayer(longBeep, 'longBeep');
 }
 
 export function playSessionEnd() {

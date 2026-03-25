@@ -142,8 +142,10 @@ export default function TimerScreen() {
     : 0;
 
   useEffect(() => {
+    console.warn('[timer] sound effect — phaseIndex:', currentPhaseIndex, 'phaseType:', phase?.type, 'timeRemaining:', timeRemaining);
     if (currentPhaseIndex !== prevPhaseRef.current) {
       prevPhaseRef.current = currentPhaseIndex;
+      console.warn('[timer] phase changed to', phase?.type, '— playing sound for new phase');
       if (phase?.type === 'hang') {
         playStart();
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
@@ -157,6 +159,7 @@ export default function TimerScreen() {
     }
 
     if (phase?.type === 'hang' && timeRemaining <= 3 && timeRemaining > 0) {
+      console.warn('[timer] countdown beep — timeRemaining:', timeRemaining);
       playCountdown();
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
@@ -209,6 +212,7 @@ export default function TimerScreen() {
 
   useEffect(() => {
     if (isRunning && phase) {
+      console.warn('[timer] calling startBackgroundTimer — phase:', phase.type, 'timeRemaining:', timeRemaining);
       startBackgroundTimer(
         NOTIF_PHASE_NAMES[phase.type],
         timeRemaining,
