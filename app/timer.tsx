@@ -197,7 +197,7 @@ export default function TimerScreen() {
   }, [isRunning, isPaused]);
 
   useEffect(() => {
-    loadSounds();
+    loadSounds().catch(console.error);
     return () => unloadSounds();
   }, []);
 

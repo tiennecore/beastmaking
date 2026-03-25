@@ -4,10 +4,8 @@ import { Platform } from 'react-native';
 const CHANNEL_ID = 'timer-channel';
 const NOTIF_ID = 'timer-sticky';
 
-let channelReady = false;
-
 async function ensureChannel() {
-  if (channelReady || Platform.OS !== 'android') return;
+  if (Platform.OS !== 'android') return;
   await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
     name: 'Timer en cours',
     importance: Notifications.AndroidImportance.LOW,
@@ -15,7 +13,6 @@ async function ensureChannel() {
     vibrationPattern: null,
     enableVibrate: false,
   });
-  channelReady = true;
 }
 
 function formatTime(seconds: number): string {
@@ -38,7 +35,6 @@ export async function startBackgroundTimer(
     if (newStatus !== 'granted') return;
   }
   await ensureChannel();
-  const trigger = Platform.OS === 'android' ? { channelId: CHANNEL_ID } : null;
   await Notifications.scheduleNotificationAsync({
     identifier: NOTIF_ID,
     content: {
@@ -47,7 +43,7 @@ export async function startBackgroundTimer(
       sticky: true,
       autoDismiss: false,
     },
-    trigger,
+    trigger: null,
   });
 }
 
@@ -61,7 +57,6 @@ export async function updateBackgroundNotification(
   const body = isPaused
     ? `En pause · ${formatTime(timeRemaining)}`
     : formatTime(timeRemaining);
-  const trigger = Platform.OS === 'android' ? { channelId: CHANNEL_ID } : null;
   await Notifications.scheduleNotificationAsync({
     identifier: NOTIF_ID,
     content: {
@@ -70,7 +65,7 @@ export async function updateBackgroundNotification(
       sticky: true,
       autoDismiss: false,
     },
-    trigger,
+    trigger: null,
   });
 }
 

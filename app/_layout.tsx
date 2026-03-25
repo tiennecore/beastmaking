@@ -4,7 +4,6 @@ import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'nativewind';
 import * as Notifications from 'expo-notifications';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { loadSounds, unloadSounds } from '@/lib/sounds';
 import { useThemeColors, initTheme } from '@/lib/theme';
 import '../global.css';
 
@@ -13,18 +12,13 @@ Notifications.setNotificationHandler({
     shouldPlaySound: false,
     shouldSetBadge: false,
     shouldShowBanner: false,
-    shouldShowList: false,
+    shouldShowList: true,
   }),
 });
 
 export default function RootLayout() {
   const { colorScheme, setColorScheme } = useColorScheme();
   const colors = useThemeColors();
-
-  useEffect(() => {
-    loadSounds();
-    return () => { unloadSounds(); };
-  }, []);
 
   useEffect(() => {
     initTheme(setColorScheme);
