@@ -58,8 +58,20 @@ export async function loadSounds() {
     }
   }
 
+  // Set volume explicitly
+  if (shortBeep) shortBeep.volume = 1.0;
+  if (longBeep) longBeep.volume = 1.0;
+
   console.warn('[sounds] loadSounds() done — shortBeepReady:', shortBeepReady, 'longBeepReady:', longBeepReady);
-  Alert.alert('Sound Debug', `shortBeep: ${shortBeepReady}, longBeep: ${longBeepReady}, isLoaded: ${shortBeep?.isLoaded}/${longBeep?.isLoaded}`);
+  Alert.alert('Sound Debug', `shortBeep: ${shortBeepReady}, longBeep: ${longBeepReady}, isLoaded: ${shortBeep?.isLoaded}/${longBeep?.isLoaded}, volume: ${shortBeep?.volume}`, [
+    { text: 'Test Sound', onPress: () => {
+      if (shortBeep) {
+        shortBeep.play();
+        Alert.alert('Test', `playing: ${shortBeep.playing}`);
+      }
+    }},
+    { text: 'OK' },
+  ]);
 }
 
 async function replayPlayer(player: AudioPlayer, name: string) {
