@@ -1,3 +1,4 @@
+import { Alert } from 'react-native';
 import { createAudioPlayer, setAudioModeAsync, AudioPlayer } from 'expo-audio';
 
 const SHORT_BEEP_SOURCE = require('@/assets/sounds/beep-short.mp3') as number;
@@ -7,6 +8,7 @@ let shortBeep: AudioPlayer | null = null;
 let longBeep: AudioPlayer | null = null;
 let shortBeepReady = false;
 let longBeepReady = false;
+let playCount = 0;
 
 // Native sound mode is disabled — foreground service native module not registered
 export function setNativeSoundMode(_enabled: boolean) {
@@ -57,6 +59,7 @@ export async function loadSounds() {
   }
 
   console.warn('[sounds] loadSounds() done — shortBeepReady:', shortBeepReady, 'longBeepReady:', longBeepReady);
+  Alert.alert('Sound Debug', `shortBeep: ${shortBeepReady}, longBeep: ${longBeepReady}, isLoaded: ${shortBeep?.isLoaded}/${longBeep?.isLoaded}`);
 }
 
 async function replayPlayer(player: AudioPlayer, name: string) {
@@ -72,6 +75,8 @@ async function replayPlayer(player: AudioPlayer, name: string) {
 }
 
 export function playCountdown() {
+  playCount++;
+  if (playCount === 1) Alert.alert('Play Debug', `shortBeep exists: ${!!shortBeep}, ready: ${shortBeepReady}, isLoaded: ${shortBeep?.isLoaded}`);
   console.warn('[sounds] playCountdown() called — shortBeep exists:', !!shortBeep, 'shortBeepReady:', shortBeepReady);
   if (!shortBeep || !shortBeepReady) return;
   replayPlayer(shortBeep, 'shortBeep');

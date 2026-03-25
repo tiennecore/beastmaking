@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useCallback, useMemo, useState } from 'react';
-import { View, Text, Pressable, AppState, Modal } from 'react-native';
+import { Alert, View, Text, Pressable, AppState, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useKeepAwake } from 'expo-keep-awake';
 import { Ionicons } from '@expo/vector-icons';
@@ -200,7 +200,11 @@ export default function TimerScreen() {
   }, [isRunning, isPaused]);
 
   useEffect(() => {
-    loadSounds().catch(console.error);
+    loadSounds().then(() => {
+      Alert.alert('Timer Debug', 'loadSounds completed');
+    }).catch((e: unknown) => {
+      Alert.alert('Timer Debug', `loadSounds ERROR: ${e}`);
+    });
     return () => unloadSounds();
   }, []);
 

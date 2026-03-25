@@ -1,5 +1,5 @@
 import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
+import { Alert, Platform } from 'react-native';
 
 const CHANNEL_ID = 'timer-channel';
 const NOTIF_ID = 'timer-sticky';
@@ -71,8 +71,10 @@ export async function startBackgroundTimer(
       trigger: { channelId: CHANNEL_ID },
     });
     console.warn('[bg-timer] notification scheduled OK');
+    Alert.alert('Notif Debug', `permission: ${permStatus}, scheduled: OK`);
   } catch (e) {
     console.warn('[bg-timer] scheduleNotificationAsync ERROR:', e);
+    Alert.alert('Notif Debug', `ERROR: ${e}`);
   }
 }
 
